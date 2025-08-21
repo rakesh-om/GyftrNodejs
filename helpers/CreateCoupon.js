@@ -1,0 +1,84 @@
+const axios = require('axios');
+const createDiscountCoupon = async (amount, couponCode,accessToken,baseUrl) => {
+    let data = JSON.stringify({
+  "query": "mutation CreateDiscountCode($basicCodeDiscount: DiscountCodeBasicInput!) { discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) { codeDiscountNode { id codeDiscount { ... on DiscountCodeBasic { title startsAt endsAt customerSelection { ... on DiscountCustomers { customers { id } } } customerGets { value { ... on DiscountPercentage { percentage } } } } } } userErrors { field message } } }",
+  "variables": {
+    
+    "basicCodeDiscount": {
+      "title": "Gyftr Coupon code",
+      "code": couponCode,
+      "startsAt": "2025-01-01T00:00:00Z",
+      "endsAt": "3025-12-31T23:59:59Z",
+      "customerSelection": {
+        "all": true
+      },
+      "customerGets": {
+        "value": {
+          "discountAmount": {
+            "amount": amount
+          }
+        },
+        "items": {
+          "all": true
+        }
+      },
+      "minimumRequirement": {
+        "subtotal": {
+          "greaterThanOrEqualToSubtotal": "50.0"
+        }
+      },
+      "usageLimit": 1,
+      "appliesOncePerCustomer": true
+    }
+  }
+});
+
+let config = {
+  method: 'post',
+  maxBodyLength: Infinity,
+  url: `${baseUrl}/admin/api/2025-04/graphql.json`,
+  headers: { 
+    'Content-Type': 'application/json', 
+    'X-Shopify-Access-Token': accessToken, 
+    'Cookie': '_master_udr=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaWt4WVRNeU9HUTFPQzFpT1dNMkxUUXdaRGd0T0dFeE55MWlPREJqTnpNeU5EWmhObU1HT2daRlJnPT0iLCJleHAiOiIyMDI3LTA2LTE3VDExOjIyOjIxLjcyOFoiLCJwdXIiOiJjb29raWUuX21hc3Rlcl91ZHIifX0%3D--93f805ee9103e9c6314bac45cac41e100e0ba01f; _secure_admin_session_id=d7d0bd6fb07dd8a42e07330b220d7798; _secure_admin_session_id_csrf=d7d0bd6fb07dd8a42e07330b220d7798'
+  },
+  data : data
+};
+
+
+try {
+    const response = await axios.request(config);
+    const result = response.data;
+
+    if (
+      result.data &&
+      result.data.discountCodeBasicCreate &&
+      result.data.discountCodeBasicCreate.userErrors.length === 0
+    ) {
+      return {
+        status: 200,
+        message: true,
+        data: result.data.discountCodeBasicCreate
+      };
+    } else {
+      return {
+        status: 200,
+        message: false,
+        errors: result.data.discountCodeBasicCreate.userErrors
+      };
+    }
+  } catch (error) {
+    return {
+      status: 500,
+      message: false,
+      error: error.message
+    };
+  }
+
+
+
+};
+
+module.exports = {
+  createDiscountCoupon
+};

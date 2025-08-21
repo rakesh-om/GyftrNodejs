@@ -1,0 +1,332 @@
+
+/*
+ * initiatePayment.js
+ * -----------------------------------
+ * Handles payment initiation via GyFTR gateway with detailed comments
+ */
+
+const phpUnserialize = require('php-unserialize'); 
+const { generateHash, reverseHashData } = require('../utils/hashUtil');
+const axios = require('axios');
+const { encrypt, decrypt } = require('../utils/gyftrCrypto');
+const db = require('../config/dbConnect');
+const GYFTR_TEST_URL = process.env.GYFTR_TEST_URL
+const { createDiscountCoupon } = require('../helpers/CreateCoupon');
+const Cartdetails = require('../models/Cartdetails.js');
+const GyftrRedeem = require('../models/GyftrRedemptions.js');
+
+exports.renderForm = (req, res) => {
+  res.send(`
+    <form action="/api/payment/initiate" method="post">
+      <label>Mobile Number:</label><input name="mobile" /><br/>
+      <label>Amount:</label><input name="txnamount" /><br/>
+      <label>Order ID:</label><input name="porderid" /><br/>
+      <input type="submit" value="Initiate Payment" />
+    </form>
+  `);
+};
+
+
+/**
+ * initiatePayment
+ * ---------------
+ * 1. Validates required input fields.
+ * 2. Fetches merchant settings from DB.
+ * 3. Persists initial cart details.
+ * 4. Prepares payload for GyFTR.
+ * 5. Generates security hash.
+ * 6. Constructs and returns an auto-submit HTML form.
+ *
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ */ 
+
+
+/**
+ * Handles payment initiation logic, hashes payload and submits to GyFTR
+ */
+ 
+exports.initiatePayment = async (req, res) => {
+  try {
+
+    // Step 1: Destructure input parameters
+    const { txnamount, porderid, mobile, baseUrl } = req.body;
+    // Step 1a: Validate presence of mandatory fields
+    if (!mobile || !txnamount || !porderid) {
+      return res.status(400).json({ error: 'Missing mobile, txnamount, or porderid' });
+    }
+
+    // Step 2: Fetch merchant information using shop identifier
+      const shop = req.shopDomain;
+      const shopId = req.headers['shopify-edge-metadata-shop-id'];
+      console.log('Initiating payment for:', shop);
+      
+    try {
+
+      // Query Setting table for merchant details
+      const [merchant] = await db.query(
+        'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
+        {
+          replacements: { shopId: shopId },
+          type: db.QueryTypes.SELECT
+        }
+      );
+
+      // Step 2a: Handle missing merchant record
+      if (!merchant) {
+        return res.status(404).json({ error: 'Merchant not found' });
+      }
+      // Step 3: Build unique transaction ID and retrieve salt
+      const brandName = merchant.brand_name;
+      const shop_id = merchant.shopid;
+      const updateTid = `${brandName}-${shop_id}`;
+      const salt = merchant.hash_salt
+
+      // Step 4: Persist initial cart detail record
+      const newRecord = await Cartdetails.create({
+        porderid: porderid,
+        total: txnamount,
+        tid: updateTid,
+        baseUrl: baseUrl,
+        shopid: shopId,
+        status: 'PENDING',
+        mid:merchant.mid,
+        mobile:mobile
+      }); 
+
+      const mid = merchant.mid;
+      const tid = updateTid;
+      if (!mobile || !txnamount || !porderid) {
+        return res.status(400).json({ error: 'Missing mobile, txnamount, or porderid' });
+      }
+
+      // Step 5: Prepare POST data for GyFTR
+      const postData = {
+        api_version: 'V2',        // API version constant
+        enforce_prefix: '',       // Optional prefix
+        merchant_sub_mid: '',     // Optional sub-MID
+        mid,                      // Merchant ID
+        mobile,                   // Customer mobile number
+        porderid,                 // Order identifier
+        return_url: process.env.CALL_BACK_URL,  // Callback URL
+        source: 'W',              // Source identifier
+        tid,                      // Unique transaction ID
+        txnamount:10              // Transaction amount
+      };
+
+       // Step 6: Generate security hash and attach to payload
+      const hash = generateHash(postData, salt);
+      postData.hash = hash;
+
+      // Step 7: Build auto-submitting HTML form
+      let formHtml = `<html><body onload="document.forms[0].submit()">`;
+      formHtml += `<form method="POST" action="${GYFTR_TEST_URL}">`;
+
+      for (let key in postData) {
+        formHtml += `<input type="hidden" name="${key}" value="${postData[key]}" />`;
+      }
+
+      formHtml += `</form></body></html>`;
+
+      // Step 8: Send HTML form to client
+      res.setHeader('Content-Type', 'text/html');
+      res.send(formHtml);
+    } catch (error) {
+      // Handle database or Cartdetails.create errors
+      console.error("Gift card creation error:", error.message);
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+
+  } catch (error) {
+    // Catch-all for unexpected errors
+    console.error('Error initiating payment:', error.message);
+  }
+
+};
+
+/**
+ * Callback endpoint to receive response from GyFTR after payment
+ */
+
+exports.handleCallback = async (req, res) => {
+
+  // Step 1: Validate presence of inputData
+  try {
+    const inputData = req.body.inputData;
+    if (!inputData) {
+      return res.status(400).send('Invalid callback data.');
+    }
+
+    // Step 2: Unserialize PHP-style serialized string
+    const parsedData = phpUnserialize.unserialize(inputData);
+    //console.log('response data', parsedData);
+    const api_version = parsedData.api_version;
+    const mid = parsedData.mid;
+    const status = parsedData.status;
+    const mobile = parsedData.mobile;
+    const porderid = parsedData.porderid;
+    const amount = parsedData.redeemed_amount;//parsedData.txnAmount;
+    const CouponCode = parsedData.walletRedemptionTxnId; //`ePay-${mobile}`;
+    //const return_url = parsedData.return_url;
+    //const source = parsedData.source;
+    //const tid = parsedData.tid;
+    const txnAmount = parsedData.txnAmount;
+    const reverseHash = parsedData.reverseHash;
+    const originalPaymentDetails = parsedData.paymentDetails;
+    // Step 3: Prepare data for signature verification
+    const paymentDetailsArray = Object.values(originalPaymentDetails).map((item) => ({
+      type: item.type,
+      mode: item.mode,
+      amount: item.amount,
+      txnId: item.txnId
+    }));
+    const hashInput = {
+      "status_code": parsedData.status_code,
+      "status": parsedData.status,
+      "remark": parsedData.remark,
+      "mobile": parsedData.mobile,
+      "mid": parsedData.mid,
+      "tid": parsedData.tid,
+      "txnAmount": parsedData.txnAmount,
+      "return_url": parsedData.return_url,
+      "porderid": parsedData.porderid,
+      "source": parsedData.source,
+      "api_version": parsedData.api_version,
+      "walletRedemptionTxnId": parsedData.walletRedemptionTxnId,
+      "paymentDetails": paymentDetailsArray,
+      "pg_name": parsedData.pg_name,
+      "redeemed_amount": parsedData.redeemed_amount,
+      "balance_to_collect": parsedData.balance_to_collect
+    };
+    
+    // Step 4: Fetch merchant reverse_salt and verify signature
+    const [merchant] = await db.query(
+      'SELECT reverse_salt FROM Setting WHERE mid = :mid LIMIT 1',
+      {
+        replacements: { mid: mid },
+        type: db.QueryTypes.SELECT
+      }
+    ); 
+
+    if (!merchant) {
+      return res.status(404).json({ error: 'Merchant not found' });
+    }
+    const r_hash_salt = merchant.reverse_salt;
+    const calculatedHash = reverseHashData(JSON.stringify(hashInput), r_hash_salt);
+    if (calculatedHash !== reverseHash) {
+      console.warn('❌ Hash mismatch - possible spoofed or tampered callback');
+      return res.status(403).send('Invalid callback signature. Request rejected.');
+    }
+    
+    // Step 5: Process based on transaction status
+    if (status === 'TXN_SUCCESS') {
+      try {
+        // 5a: Retrieve cart record for this order
+        const record = await Cartdetails.findOne({
+          where: { porderid: porderid },
+          attributes: ['baseUrl', 'shopid']
+        });
+        const shopId = record.shopid;
+        // 5b: Fetch Shopify access token
+        const merchant = await db.query(
+          'SELECT accessToken FROM Setting WHERE shopid = :shopid',
+          {
+            replacements: { shopid: shopId },
+            type: db.QueryTypes.SELECT
+          }
+        );
+
+        const accessToken = merchant.length > 0 ? merchant[0].accessToken : null;
+        const baseUrl = record.baseUrl;
+
+        // 5c: Create discount coupon via Shopify API
+        const coupon = await createDiscountCoupon(amount, CouponCode, accessToken, baseUrl);
+
+        // 5d: Validate coupon creation response
+        if (coupon.message === true && coupon.data && coupon.data.codeDiscountNode) {
+          const discountId = coupon.data.codeDiscountNode.id;
+          const couponId = discountId.split("/").pop();
+          if (discountId) {
+            // Update the coupon 
+            await Cartdetails.update(
+              { CouponCode: CouponCode,
+                status:'TXN_SUCCESS',
+                callback_received: true
+               },
+              { where: { porderid: porderid } }
+            );
+
+            // 5e: Persist coupon code in Cartdetails and GyftrRedeem tables
+            await GyftrRedeem.create({
+              user_id: null,
+              shopify_order_id: null,
+              gytr_order_id: porderid,
+              coupon_code: CouponCode,
+              amount: parsedData.redeemed_amount, //txnAmount,
+              refunded: false,
+              redeemed_at: new Date(),
+              mid:mid,
+              requestid:null,
+              coupon_id:couponId
+            }); 
+
+            // 5f: Insert  Shopifycoupon  details for delete coupon  
+
+            // await ShopifyCoupon.create({
+            //   coupon_code:CouponCode,
+            //   gyftr_pre_orderid:porderid,
+            //   coupon_id:couponId,
+            //   used:false,
+            //   mid:mid
+            // })
+            
+            // 5g: Redirect customer to cart with success params
+            const encodedcoupon = Buffer.from(CouponCode).toString('base64');
+            const encodedcouponid = Buffer.from(couponId).toString('base64');
+            const successUrl = `${baseUrl}/cart?gyfter=true&error=false&coupon=${encodedcoupon}&orderid=${porderid}&amount=${txnAmount}&id=${encodedcouponid}`;
+            return res.redirect(successUrl);
+
+          }
+        } else {
+          const baseUrl = record?.baseUrl
+          const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=${encodeURIComponent("Missing discount ID")}`;
+          return res.redirect(failUrl);
+        }
+      } catch (err) {
+        console.error('Coupon creation failed:', err);
+        const baseUrl = record?.baseUrl
+        const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=${err}`;
+        return res.redirect(failUrl);
+      }
+
+
+      // Step 6: Handle other statuses (e.g., TXN_CANCELED)
+    } else if (status === 'TXN_CANCELED') {
+
+      const parsedData = phpUnserialize.unserialize(inputData);
+      const porderid = parsedData.porderid;
+      const record = await Cartdetails.findOne({
+          where: { porderid: porderid },
+          attributes: ['baseUrl', 'shopid']
+        });
+      const baseUrl = record?.baseUrl
+      const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=Transaction Cancelled`;
+      return res.redirect(failUrl); 
+      console.log(`Transaction ${porderid} was successful for ${mobile}.`);
+    } else {
+      console.log(`Unhandled status: ${status}`);
+    }
+
+    //res.send('Payment response received. Thank you!');
+  } catch (error) {
+    console.error('Error parsing callback:', error);
+    res.status(500).send('Error processing payment response.');
+  }
+};
+
+
+
+
+
+
+
