@@ -23,12 +23,32 @@ require('./models/GyftrRedemptions');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(cors());
 // CORS settings
+
+/*
+const cors = require('cors');
+const allowedOrigins = [
+  /^https:\/\/.*\.myshopify\.com$/,  // any Shopify store
+  /^https:\/\/.*\.gyftr\.net$/,      // any gyftr.net subdomain
+  /^https:\/\/gyftr\.net$/           // root
+];
+
 app.use(cors({
-  origin: 'https://gyfterom.myshopify.com',
-  methods: ['GET', 'POST'],
+  origin: (origin, callback) => {
+    if (!origin) {
+      // ✅ Allow Shopify proxy, webhooks, server-to-server calls
+      return callback(null, true);
+    }
+    if (allowedOrigins.some(pattern => pattern.test(origin))) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS: " + origin));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
+*/
 
 // Routes
 const gyfterPayRoutes = require('./routes/api');

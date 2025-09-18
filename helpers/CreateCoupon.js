@@ -24,7 +24,7 @@ const createDiscountCoupon = async (amount, couponCode,accessToken,baseUrl) => {
       },
       "minimumRequirement": {
         "subtotal": {
-          "greaterThanOrEqualToSubtotal": "50.0"
+          "greaterThanOrEqualToSubtotal": "1"
         }
       },
       "usageLimit": 1,

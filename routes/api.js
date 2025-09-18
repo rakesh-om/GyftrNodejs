@@ -77,6 +77,20 @@ router.post('/refundCallbacknotRecieved',refundController.refundCallbacknotRecie
 router.post('/getcouponStatus',DeleteCoupon.getCouponStatus);
 
 
+// ==========================
+// 🛒 Shopify App Webhooks
+// ==========================
+
+router.post('/webhooks/app/uninstalled', (req, res) => {
+  console.log("App uninstalled webhook received:", req.body);
+  res.sendStatus(200);
+});
+
+router.post('/webhooks/app/scopes_update', (req, res) => {
+  console.log("App scopes_update webhook received:", req.body);
+  res.sendStatus(200);
+});
+
 
 // ================================
 // Update Attribute

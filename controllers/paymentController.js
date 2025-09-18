@@ -111,7 +111,7 @@ exports.initiatePayment = async (req, res) => {
         return_url: process.env.CALL_BACK_URL,  // Callback URL
         source: 'W',              // Source identifier
         tid,                      // Unique transaction ID
-        txnamount:10              // Transaction amount
+        txnamount:txnamount              // Transaction amount
       };
 
        // Step 6: Generate security hash and attach to payload
@@ -150,6 +150,8 @@ exports.initiatePayment = async (req, res) => {
 
 exports.handleCallback = async (req, res) => {
 
+   // console.log('call back handle');
+     // return res.status(200).json({ message: 'Callback handled successfully' });
   // Step 1: Validate presence of inputData
   try {
     const inputData = req.body.inputData;
@@ -281,9 +283,11 @@ exports.handleCallback = async (req, res) => {
             // })
             
             // 5g: Redirect customer to cart with success params
+	    //console.log('Coupnsss - ', CouponCode);
             const encodedcoupon = Buffer.from(CouponCode).toString('base64');
             const encodedcouponid = Buffer.from(couponId).toString('base64');
             const successUrl = `${baseUrl}/cart?gyfter=true&error=false&coupon=${encodedcoupon}&orderid=${porderid}&amount=${txnAmount}&id=${encodedcouponid}`;
+	    //console.log(successUrl);
             return res.redirect(successUrl);
 
           }
