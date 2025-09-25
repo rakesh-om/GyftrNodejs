@@ -331,7 +331,7 @@ exports.handleCallback = async (req, res) => {
             log_msg: "Return Response",
             mobile: mobile,  
             porderid,
-            brand_name: brandName,
+            brand_name: '',
           };
 
           // Add createdDate
@@ -381,11 +381,12 @@ exports.handleCallback = async (req, res) => {
       apiName: 'callbackRecieved',
       logMsg: 'Merchant fetch query result',
       request: {
-        sql: 'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
-        params: { shopId }
+        sql: 'SELECT reverse_salt FROM Setting WHERE mid = :mid LIMIT 1',
+        params: { mid }
       },
       response: merchant
     });
+
     if (!merchant) {
       return res.status(404).json({ error: 'Merchant not found' });
     }
