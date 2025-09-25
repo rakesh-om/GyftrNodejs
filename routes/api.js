@@ -4,6 +4,9 @@ const router = express.Router();
 // Middleware to validate the Shopify store (if needed)
 const validateShop = require('../middlewares/validateShop');
 
+// Db Connectivity
+const db = require('../config/dbConnect'); 
+
 // Controllers
 const customerController = require("../controllers/initiateGyfterPay.js");
 const paymentController = require('../controllers/paymentController.js');
@@ -81,9 +84,41 @@ router.post('/getcouponStatus',DeleteCoupon.getCouponStatus);
 // 🛒 Shopify App Webhooks
 // ==========================
 
-router.post('/webhooks/app/uninstalled', (req, res) => {
+router.post('/webbbbhooksssss/app/uninstalled', (req, res) => {
   console.log("App uninstalled webhook received:", req.body);
   res.sendStatus(200);
+});
+
+// App Uninstalled Webhook
+router.post('/webhooks/app/uninstalled', async (req, res) => {
+  try {
+    const shopData = req.body;
+    const shopId = shopData.id;       // Shopify shop ID
+    const shopDomain = shopData.domain; // Optional: shop domain
+
+    console.log("App uninstalled for shopId:", shopId);
+
+    if (!shopId) {
+      console.error("No shopId received in webhook payload");
+      return res.sendStatus(200);
+    }
+
+    // Delete the shop record from Setting table
+    await db.query(
+      'DELETE FROM Setting WHERE shopid = :shopid',
+      {
+        replacements: { shopid: shopId },
+        type: db.QueryTypes.DELETE
+      }
+    );
+
+    console.log(`Deleted shop with shopid ${shopId} from Setting table`);
+    res.sendStatus(200);
+
+  } catch (error) {
+    console.error("Error handling uninstall webhook:", error);
+    res.sendStatus(500);
+  }
 });
 
 router.post('/webhooks/app/scopes_update', (req, res) => {

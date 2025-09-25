@@ -115,8 +115,11 @@ exports.orderCreateWebhook = async (req, res) => {
  * Fetches order, encrypts request, sends to GyFTR and parses response
  */
   exports.cartRefund = async (req, res) => {
+  //console.log(req.params);
+  //console.log(req);
   try {
-    const shop = 'gyfterom.myshopify.com'; // Can be dynamic later from req.body.shop
+    //const shop = 'gyfterom.myshopify.com'; // Can be dynamic later from req.body.shop
+    const shop = req.query.shop;
     if (!shop) return res.status(400).json({ error: 'Missing shop in URL' });
 
     // 🔍 Lookup merchant

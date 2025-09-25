@@ -1,74 +1,46 @@
-const express = require('express');
-const colors = require('colors');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const app = express();
+const dotenv = require('dotenv')
 dotenv.config();
+let server;
 
-// Import DB and models
-const db = require('./config/dbConnect');
-require('./models/Cartdetails');
-require('./models/RefundData');
-require('./models/WebhookData');
-require('./models/GyftrRedemptions');
+if (process.env.STATUS == "staging" || process.env.STATUS == "production") {
 
 
-// Call Cron Jon 
-// require('./cronJobs/autoRefunds');
-// require('./cronJobs/AdminRefunds');
-// require('./cronJobs/RefundCallbacknotRecieved');
+    const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
 
+    // Set the AWS region
+    const REGION = "ap-south-1";
+    const secretName = process.env.secretName;
 
+    // Set up AWS Secrets Manager client
+    const client = new SecretsManagerClient({ region: REGION });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+    // Set up the command to retrieve the secret value
+    const command = new GetSecretValueCommand({ SecretId: secretName });
 
-app.use(cors());
-// CORS settings
+    // Execute the command
+    client.send(command)
+        .then(data => {
+            if (data.SecretString) {
+                // Parse and use the secret value
+                const secretObj = JSON.parse(data.SecretString);
+                //console.log('sec', secretObj);
+                for (const envKey of Object.keys(secretObj)) {
+                    process.env[envKey] = secretObj[envKey];
+                }
 
-/*
-const cors = require('cors');
-const allowedOrigins = [
-  /^https:\/\/.*\.myshopify\.com$/,  // any Shopify store
-  /^https:\/\/.*\.gyftr\.net$/,      // any gyftr.net subdomain
-  /^https:\/\/gyftr\.net$/           // root
-];
+                server = require('./server')
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) {
-      // ✅ Allow Shopify proxy, webhooks, server-to-server calls
-      return callback(null, true);
-    }
-    if (allowedOrigins.some(pattern => pattern.test(origin))) {
-      return callback(null, true);
-    }
-    return callback(new Error("Not allowed by CORS: " + origin));
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true
-}));
-*/
+            } else {
+                console.log("secret manager not a proper data")
+                // Handle binary secret data
+                Buffer.from(data.SecretBinary, 'base64');
+            }
+        })
+        .catch(err => {
+            console.error("Error fetching secret:", err);
+        });
 
-// Routes
-const gyfterPayRoutes = require('./routes/api');
-app.use('/api/payment', gyfterPayRoutes);
+} else {
 
-// Test route
-app.get('/', (req, res) => {
-  res.send('Hello, Express!');
-});
-
-// Sync models and start server
-const PORT = process.env.PORT || 8090;
-
-db.sync({ alter: true }) // Create or update tables
-  .then(() => {
-    console.log('✅ Sequelize models synced successfully.'.green);
-    app.listen(PORT, () => {
-      console.log(`🚀 Node Server is running in ${process.env.DEV_MODE} mode on port ${PORT}`.bgCyan.white);
-    });
-  })
-  .catch(err => {
-    console.error('❌ Error syncing Sequelize models:', err);
-  });
+    server = require('./server');
+}
