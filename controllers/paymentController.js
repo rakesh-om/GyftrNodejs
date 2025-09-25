@@ -14,6 +14,8 @@ const GYFTR_TEST_URL = process.env.GYFTR_TEST_URL
 const { createDiscountCoupon } = require('../helpers/CreateCoupon');
 const Cartdetails = require('../models/Cartdetails.js');
 const GyftrRedeem = require('../models/GyftrRedemptions.js');
+const Piutility = require('../helpers/encdec.js');
+const FluentBitLogger = require('../helpers/FluentLogger.js');
 
 exports.renderForm = (req, res) => {
   res.send(`
@@ -56,6 +58,9 @@ exports.initiatePayment = async (req, res) => {
       return res.status(400).json({ error: 'Missing mobile, txnamount, or porderid' });
     }
 
+    //Incrept mobile number before save into DB
+      const encmobile = await Piutility.piEncryption(mobile);
+
     // Step 2: Fetch merchant information using shop identifier
       const shop = req.shopDomain;
       const shopId = req.headers['shopify-edge-metadata-shop-id'];
@@ -91,7 +96,7 @@ exports.initiatePayment = async (req, res) => {
         shopid: shopId,
         status: 'PENDING',
         mid:merchant.mid,
-        mobile:mobile
+        mobile:encmobile
       }); 
 
       const mid = merchant.mid;
@@ -100,6 +105,68 @@ exports.initiatePayment = async (req, res) => {
         return res.status(400).json({ error: 'Missing mobile, txnamount, or porderid' });
       }
 
+      // Save log  into Fluent Log
+      const moment = require("moment");
+      
+      try {
+          const dbConnection = new FluentBitLogger();
+
+          let documentlogs = {
+            api_name: "initiatePayment",
+            ip_address: request.socket.localAddress || "",
+            log_data: {
+              api_version: 'V2',        
+              enforce_prefix: '',       
+              merchant_sub_mid: '',     
+              mid,                      
+              mobile:encmobile,                  
+              porderid,                 
+              return_url: process.env.CALL_BACK_URL, 
+              source: 'W',              
+              tid,                      
+              txnamount:txnamount  
+            },
+            log_msg: "Initiate Payment",
+            mobile: encmobile,  
+            porderid,
+            brand_name: brandName,
+          };
+
+          // Add createdDate
+          documentlogs.createdDate = moment().format("YYYY-MM-DD HH:mm:ss");
+
+          // Encrypt mobile
+          if (documentlogs?.mobile) {
+            documentlogs.mobile = await Piutility.piEncryption(documentlogs.mobile);
+          }
+
+          // Process log_data
+          if (typeof documentlogs.log_data === "object") {
+            documentlogs.log_data = Object.assign({}, documentlogs.log_data);
+
+            // lowercase keys
+            documentlogs.log_data = Piutility.obj_key_case_change(documentlogs.log_data, "CASE_LOWER");
+
+            // Encrypt mobile if exists in log_data
+            if (documentlogs.log_data.mobile) {
+              documentlogs.log_data.mobile = await Piutility.piEncryption(documentlogs.log_data.mobile);
+            }
+
+            // Stringify for storage
+            documentlogs.log_data = JSON.stringify(documentlogs.log_data);
+          }
+
+          // Save to FluentBit only in production
+          if (process.env.STATUS === "production" || process.env.STATUS === "staging") {
+            await dbConnection.query(documentlogs);
+          } else {
+            exports.wrapper_log("info", JSON.stringify(documentlogs));
+          }
+        } catch (error) {
+          console.log("saveMongoLog", error);
+        }
+       
+      
       // Step 5: Prepare POST data for GyFTR
       const postData = {
         api_version: 'V2',        // API version constant
