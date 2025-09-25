@@ -44,6 +44,49 @@ exports.renderForm = (req, res) => {
  */ 
 
 
+async function logDbQuery({ apiName, logMsg, request, response }) {
+  try {
+    const dbConnection = new FluentBitLogger();
+
+    let documentlogs = {
+      api_name: apiName || "db_query",
+      log_msg: logMsg || "DB query executed",
+      createdDate: moment().format("YYYY-MM-DD HH:mm:ss"),
+      log_data: {
+        request,
+        response
+      }
+    };
+
+    // Optional: Encrypt sensitive fields like mobile
+    if (documentlogs.log_data?.request?.params?.mobile) {
+      documentlogs.log_data.request.params.mobile = await Piutility.piEncryption(
+        documentlogs.log_data.request.params.mobile
+      );
+    }
+
+    if (documentlogs.log_data?.response?.mobile) {
+      documentlogs.log_data.response.mobile = await Piutility.piEncryption(
+        documentlogs.log_data.response.mobile
+      );
+    }
+
+    // Stringify log_data before saving (like your other logs)
+    documentlogs.log_data = JSON.stringify(documentlogs.log_data);
+
+    // Save logs conditionally based on env
+    if (process.env.STATUS === "production" || process.env.STATUS === "staging") {
+      await dbConnection.query(documentlogs);
+    } else {
+      exports.wrapper_log("info", JSON.stringify(documentlogs));
+    }
+
+  } catch (error) {
+    console.error("Failed to log DB query:", error);
+  }
+}
+
+
 /**
  * Handles payment initiation logic, hashes payload and submits to GyFTR
  */
@@ -77,6 +120,15 @@ exports.initiatePayment = async (req, res) => {
         }
       );
 
+      await logDbQuery({
+        apiName: 'initiatePayment',
+        logMsg: 'Merchant fetch query result',
+        request: {
+          sql: 'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
+          params: { shopId }
+        },
+        response: merchant
+      });
       // Step 2a: Handle missing merchant record
       if (!merchant) {
         return res.status(404).json({ error: 'Merchant not found' });
@@ -264,6 +316,55 @@ exports.handleCallback = async (req, res) => {
       "redeemed_amount": parsedData.redeemed_amount,
       "balance_to_collect": parsedData.balance_to_collect
     };
+
+    // Save log  into Fluent Log
+      const moment = require("moment");
+      
+      try {
+          const dbConnection = new FluentBitLogger();
+
+          let documentlogs = {
+            api_name: "callbackRecieved",
+            ip_address: req.socket.localAddress || "",
+            log_data: parsedData,
+            log_msg: "Return Response",
+            mobile: mobile,  
+            porderid,
+            brand_name: brandName,
+          };
+
+          // Add createdDate
+          documentlogs.createdDate = moment().format("YYYY-MM-DD HH:mm:ss");
+
+          // Encrypt mobile
+          if (documentlogs?.mobile) {
+            documentlogs.mobile = await Piutility.piEncryption(documentlogs.mobile);
+          }
+
+          // Process log_data
+          if (typeof documentlogs.log_data === "object") {
+            documentlogs.log_data = Object.assign({}, documentlogs.log_data);
+
+            // Encrypt mobile if exists in log_data
+            if (documentlogs.log_data.mobile) {
+              documentlogs.log_data.mobile = await Piutility.piEncryption(documentlogs.log_data.mobile);
+            }
+
+            // Stringify for storage
+            documentlogs.log_data = JSON.stringify(documentlogs.log_data);
+          }
+
+          // Save to FluentBit only in production
+          if (process.env.STATUS === "production" || process.env.STATUS === "staging") {
+            await dbConnection.query(documentlogs);
+          } else {
+            exports.wrapper_log("info", JSON.stringify(documentlogs));
+          }
+        } catch (error) {
+          console.log("Erro Occur during log save", error);
+        }
+
+
     
     // Step 4: Fetch merchant reverse_salt and verify signature
     const [merchant] = await db.query(
@@ -274,9 +375,21 @@ exports.handleCallback = async (req, res) => {
       }
     ); 
 
+
+    await logDbQuery({
+      apiName: 'callbackRecieved',
+      logMsg: 'Merchant fetch query result',
+      request: {
+        sql: 'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
+        params: { shopId }
+      },
+      response: merchant
+    });
     if (!merchant) {
       return res.status(404).json({ error: 'Merchant not found' });
     }
+    
+    
     const r_hash_salt = merchant.reverse_salt;
     const calculatedHash = reverseHashData(JSON.stringify(hashInput), r_hash_salt);
     if (calculatedHash !== reverseHash) {
@@ -293,7 +406,7 @@ exports.handleCallback = async (req, res) => {
           attributes: ['baseUrl', 'shopid']
         });
         const shopId = record.shopid;
-        console.log(shopId);
+        //console.log(shopId);
         // 5b: Fetch Shopify access token
         const merchant = await db.query(
           'SELECT accessToken FROM Setting WHERE shopid = :shopid',
@@ -308,7 +421,7 @@ exports.handleCallback = async (req, res) => {
 
         // 5c: Create discount coupon via Shopify API
         const coupon = await createDiscountCoupon(amount, CouponCode, accessToken, baseUrl);
-       console.log('coupon',coupon.data); 
+      // console.log('coupon',coupon.data); 
         // 5d: Validate coupon creation response
         if (coupon.message === true && coupon.data && coupon.data.codeDiscountNode) {
           const discountId = coupon.data.codeDiscountNode.id;
@@ -348,13 +461,13 @@ exports.handleCallback = async (req, res) => {
             // })
             
             // 5g: Redirect customer to cart with success params
-	    //console.log('Coupnsss - ', CouponCode);
+	          //console.log('Coupnsss - ', CouponCode);
            const token_amount = parsedData.redeemed_amount;
-              console.log('token_amount',token_amount);
+              //console.log('token_amount',token_amount);
             const encodedcoupon = Buffer.from(CouponCode).toString('base64');
             const encodedcouponid = Buffer.from(couponId).toString('base64');
             const successUrl = `${baseUrl}/cart?gyfter=true&error=false&coupon=${encodedcoupon}&orderid=${porderid}&amount=${token_amount}&id=${encodedcouponid}`;
-	    console.log(successUrl);
+	          //console.log(successUrl);
             return res.redirect(successUrl);
 
           }
