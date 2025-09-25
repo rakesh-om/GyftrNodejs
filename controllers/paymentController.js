@@ -113,7 +113,7 @@ exports.initiatePayment = async (req, res) => {
 
           let documentlogs = {
             api_name: "initiatePayment",
-            ip_address: request.socket.localAddress || "",
+            ip_address: req.socket.localAddress || "",
             log_data: {
               api_version: 'V2',        
               enforce_prefix: '',       
@@ -163,7 +163,7 @@ exports.initiatePayment = async (req, res) => {
             exports.wrapper_log("info", JSON.stringify(documentlogs));
           }
         } catch (error) {
-          console.log("saveMongoLog", error);
+          console.log("Erro Occur during log save", error);
         }
        
       
