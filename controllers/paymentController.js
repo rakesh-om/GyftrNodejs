@@ -119,7 +119,7 @@ exports.initiatePayment = async (req, res) => {
               enforce_prefix: '',       
               merchant_sub_mid: '',     
               mid,                      
-              mobile:encmobile,                  
+              mobile:mobile,                  
               porderid,                 
               return_url: process.env.CALL_BACK_URL, 
               source: 'W',              
@@ -127,7 +127,7 @@ exports.initiatePayment = async (req, res) => {
               txnamount:txnamount  
             },
             log_msg: "Initiate Payment",
-            mobile: encmobile,  
+            mobile: mobile,  
             porderid,
             brand_name: brandName,
           };
@@ -143,9 +143,6 @@ exports.initiatePayment = async (req, res) => {
           // Process log_data
           if (typeof documentlogs.log_data === "object") {
             documentlogs.log_data = Object.assign({}, documentlogs.log_data);
-
-            // lowercase keys
-            documentlogs.log_data = Piutility.obj_key_case_change(documentlogs.log_data, "CASE_LOWER");
 
             // Encrypt mobile if exists in log_data
             if (documentlogs.log_data.mobile) {
