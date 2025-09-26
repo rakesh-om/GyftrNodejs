@@ -502,6 +502,14 @@ exports.handleCallback = async (req, res) => {
         } else {
           const baseUrl = record?.baseUrl
           const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=${encodeURIComponent("Missing discount ID")}`;
+          await logDbQuery({
+            apiName: 'callbackRecieved',
+            logMsg: 'Coupon Create and redirect to cart page with fail message ',
+            request: {
+              pid:porderid,
+            },
+            response: failUrl
+          });
           return res.redirect(failUrl);
         }
       } catch (err) {
@@ -523,6 +531,14 @@ exports.handleCallback = async (req, res) => {
         });
       const baseUrl = record?.baseUrl
       const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=Transaction Cancelled`;
+      await logDbQuery({
+        apiName: 'callbackRecieved',
+        logMsg: 'Txn Canceled',
+        request: {
+          pid:porderid,
+        },
+        response: failUrl
+      }); 
       return res.redirect(failUrl); 
       console.log(`Transaction ${porderid} was successful for ${mobile}.`);
     } else {

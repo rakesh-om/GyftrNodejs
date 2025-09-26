@@ -215,10 +215,10 @@ exports.orderCreateWebhook = async (req, res) => {
 
           // Handle encrypted response
           const encryptedResponse = response.data?.data || response.data;
-          console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
+          //console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
 
           const decrypted = decrypt(encryptedResponse);
-          console.log("🟢 Decrypted Response:", decrypted);
+          //console.log("🟢 Decrypted Response:", decrypted);
 
           let parsed;
           try {
