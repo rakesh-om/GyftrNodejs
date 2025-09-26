@@ -432,6 +432,15 @@ exports.handleCallback = async (req, res) => {
 
         // 5c: Create discount coupon via Shopify API
         const coupon = await createDiscountCoupon(amount, CouponCode, accessToken, baseUrl);
+        await logDbQuery({
+          apiName: 'callbackRecieved',
+          logMsg: 'Create a coupon code ',
+          request: {
+            pid:porderid,
+            params: { amount,CouponCode, accessToken,baseUrl}
+          },
+          response: coupon
+        });
       // console.log('coupon',coupon.data); 
         // 5d: Validate coupon creation response
         if (coupon.message === true && coupon.data && coupon.data.codeDiscountNode) {
@@ -478,7 +487,15 @@ exports.handleCallback = async (req, res) => {
             const encodedcoupon = Buffer.from(CouponCode).toString('base64');
             const encodedcouponid = Buffer.from(couponId).toString('base64');
             const successUrl = `${baseUrl}/cart?gyfter=true&error=false&coupon=${encodedcoupon}&orderid=${porderid}&amount=${token_amount}&id=${encodedcouponid}`;
-	          //console.log(successUrl);
+	          await logDbQuery({
+              apiName: 'callbackRecieved',
+              logMsg: 'Coupon Create and redirect to cart page with success message ',
+              request: {
+                pid:porderid,
+                params: { encodedcoupon,token_amount,encodedcouponid}
+              },
+              response: successUrl
+            });
             return res.redirect(successUrl);
 
           }
