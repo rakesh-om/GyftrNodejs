@@ -420,6 +420,15 @@ exports.handleCallback = async (req, res) => {
 
         const accessToken = merchant.length > 0 ? merchant[0].accessToken : null;
         const baseUrl = record.baseUrl;
+        await logDbQuery({
+          apiName: 'callbackRecieved',
+          logMsg: 'Get Access token using shop id ',
+          request: {
+            pid:porderid,
+            params: { shopId }
+          },
+          response: accessToken
+        });
 
         // 5c: Create discount coupon via Shopify API
         const coupon = await createDiscountCoupon(amount, CouponCode, accessToken, baseUrl);
