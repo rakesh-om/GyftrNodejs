@@ -13,12 +13,12 @@ const checkPaymentStatus = async (payload,userId,password) => {
 
     const headers = {
       'Content-Type': 'application/json',
-      'userId': userId,  //'f04390ca-346b-4868-a9af-eed4b608cefd', // optionally move to env
-      'password': password  //'k8zWfD#Jnk8z-WfD-#Jn'                // optionally move to env
+      'userId': userId,  
+      'password': password 
     };
 
     const response = await axios.post(
-      `${API_URL}/pgseamlmess-container-node/pg/api/v1/paymentStatus`,
+      `${process.env.API_BASE_URL}/paymentStatus`,
       { data: encryptedData },
       { headers }
     );
