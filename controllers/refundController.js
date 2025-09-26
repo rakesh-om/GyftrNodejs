@@ -202,7 +202,7 @@ exports.orderCreateWebhook = async (req, res) => {
 
           const encryptedData = encrypt(JSON.stringify(payload));
           const response = await axios.post(
-            `${API_URL}/pgseamlmess-container-node/pg/api/v1/refundRequest`,
+            `${process.env.API_BASE_URL}/refundRequest`,
             { data: encryptedData },
             {
               headers: {
@@ -378,7 +378,7 @@ exports.processPendingRefunds = async (req, res) => {
           try {
             // Step 6: Send refund request to GyFTR
             const response = await axios.post(
-              `${API_URL}/pgseamlmess-container-node/pg/api/v1/refundRequest`,
+              `${process.env.API_BASE_URL}/refundRequest`,
               { data: encryptedData },
               {
                 headers: {
@@ -547,7 +547,7 @@ exports.autoRefund = async (req, res) => {
 
         try {
           const response = await axios.post(
-            `${API_URL}/pgseamlmess-container-node/pg/api/v1/refundRequest`,
+            `${process.env.API_BASE_URL}/refundRequest`,
             { data: encryptedData },
             {
               headers: {
@@ -660,7 +660,7 @@ exports.getPaymentStatus = async (req, res) => {
       'password': 'k8zWfD#Jnk8z-WfD-#Jn'
     };
 
-    const api_url = `${API_URL}/pgseamlmess-container-node/pg/api/v1/paymentStatus`;
+    const api_url =  `${process.env.API_BASE_URL}/paymentStatus`;
     const response = await axios.post(api_url, { data: encryptedData }, { headers });
     console.log("📦 Full GyFTR response:", response.data);
 
@@ -748,7 +748,7 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
 
         try {
           const response = await axios.post(
-            `${API_URL}/pgseamlmess-container-node/pg/api/v1/refundRequest`,
+             `${process.env.API_BASE_URL}/refundRequest`,
             { data: encryptedData },
             {
               headers: {
@@ -821,7 +821,7 @@ exports.tesRefund = async (req, res) => {
 
     const encryptedData = encrypt(JSON.stringify(payload));
     const response = await axios.post(
-      `${API_URL}/pgseamlmess-container-node/pg/api/v1/refundRequest`,
+       `${process.env.API_BASE_URL}/refundRequest`,
       { data: encryptedData },
       {
         headers: {
