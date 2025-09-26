@@ -125,9 +125,10 @@ exports.initiatePayment = async (req, res) => {
         apiName: 'initiatePayment',
         logMsg: 'Merchant fetch query result',
         request: {
-          sql: 'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
+          pid: porderid,
           params: { shopId }
         },
+        mobile:encmobile,
         response: merchant
       });
       // Step 2a: Handle missing merchant record
@@ -266,9 +267,6 @@ exports.initiatePayment = async (req, res) => {
  */
 
 exports.handleCallback = async (req, res) => {
-
-   // console.log('call back handle');
-     // return res.status(200).json({ message: 'Callback handled successfully' });
   // Step 1: Validate presence of inputData
   try {
     const inputData = req.body.inputData;
@@ -286,9 +284,6 @@ exports.handleCallback = async (req, res) => {
     const porderid = parsedData.porderid;
     const amount = parsedData.redeemed_amount;//parsedData.txnAmount;
     const CouponCode = parsedData.walletRedemptionTxnId; //`ePay-${mobile}`;
-    //const return_url = parsedData.return_url;
-    //const source = parsedData.source;
-    //const tid = parsedData.tid;
     const txnAmount = parsedData.txnAmount;
     const reverseHash = parsedData.reverseHash;
     const originalPaymentDetails = parsedData.paymentDetails;
@@ -381,7 +376,7 @@ exports.handleCallback = async (req, res) => {
       apiName: 'callbackRecieved',
       logMsg: 'Merchant fetch query result',
       request: {
-        sql: 'SELECT reverse_salt FROM Setting WHERE mid = :mid LIMIT 1',
+        pid:porderid,
         params: { mid }
       },
       response: merchant
@@ -408,6 +403,17 @@ exports.handleCallback = async (req, res) => {
           attributes: ['baseUrl', 'shopid']
         });
         const shopId = record.shopid;
+
+
+        await logDbQuery({
+          apiName: 'callbackRecieved',
+          logMsg: 'Get Shop Id for mercaht details',
+          request: {
+            params: { porderid }
+          },
+          response: merchant
+        });
+
         //console.log(shopId);
         // 5b: Fetch Shopify access token
         const merchant = await db.query(
@@ -418,11 +424,33 @@ exports.handleCallback = async (req, res) => {
           }
         );
 
+        await logDbQuery({
+          apiName: 'callbackRecieved',
+          logMsg: 'Get Access token using shop id ',
+          request: {
+            pid:porderid,
+            params: { shopId }
+          },
+          response: merchant
+        });
+
         const accessToken = merchant.length > 0 ? merchant[0].accessToken : null;
         const baseUrl = record.baseUrl;
 
+        
+
         // 5c: Create discount coupon via Shopify API
         const coupon = await createDiscountCoupon(amount, CouponCode, accessToken, baseUrl);
+
+        await logDbQuery({
+          apiName: 'callbackRecieved',
+          logMsg: 'Create a coupon code ',
+          request: {
+            pid:porderid,
+            params: { amount,CouponCode, accessToken,baseUrl}
+          },
+          response: coupon
+        });
       // console.log('coupon',coupon.data); 
         // 5d: Validate coupon creation response
         if (coupon.message === true && coupon.data && coupon.data.codeDiscountNode) {
@@ -469,13 +497,31 @@ exports.handleCallback = async (req, res) => {
             const encodedcoupon = Buffer.from(CouponCode).toString('base64');
             const encodedcouponid = Buffer.from(couponId).toString('base64');
             const successUrl = `${baseUrl}/cart?gyfter=true&error=false&coupon=${encodedcoupon}&orderid=${porderid}&amount=${token_amount}&id=${encodedcouponid}`;
-	          //console.log(successUrl);
+
+            await logDbQuery({
+              apiName: 'callbackRecieved',
+              logMsg: 'Coupon Create and redirect to cart page with success message ',
+              request: {
+                pid:porderid,
+                params: { encodedcoupon,token_amount,encodedcouponid}
+              },
+              response: successUrl
+            });
             return res.redirect(successUrl);
 
           }
         } else {
           const baseUrl = record?.baseUrl
           const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=${encodeURIComponent("Missing discount ID")}`;
+
+          await logDbQuery({
+            apiName: 'callbackRecieved',
+            logMsg: 'Coupon Create and redirect to cart page with fail message ',
+            request: {
+              pid:porderid,
+            },
+            response: failUrl
+          });
           return res.redirect(failUrl);
         }
       } catch (err) {
@@ -497,8 +543,16 @@ exports.handleCallback = async (req, res) => {
         });
       const baseUrl = record?.baseUrl
       const failUrl = `${baseUrl}/cart?gyfter=false&error=true&message=Transaction Cancelled`;
+      await logDbQuery({
+        apiName: 'callbackRecieved',
+        logMsg: 'Txn Canceled',
+        request: {
+          pid:porderid,
+        },
+        response: failUrl
+      });
       return res.redirect(failUrl); 
-      console.log(`Transaction ${porderid} was successful for ${mobile}.`);
+      
     } else {
       console.log(`Unhandled status: ${status}`);
     }
