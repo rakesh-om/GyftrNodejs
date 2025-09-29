@@ -186,7 +186,9 @@ exports.orderCreateWebhook = async (req, res) => {
           PORDERID: transactionId
         };
 
-        const statusResponse = await checkPaymentStatus(requestPayload, userId, password);
+        const key = merchant.enc_dec_api_key;   
+        const iv = merchant.enc_dec_api_iv_key;
+        const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
 
         if (
           statusResponse?.success &&
@@ -200,7 +202,7 @@ exports.orderCreateWebhook = async (req, res) => {
             refundAmount: couponStatus.amount // You can use Number(refundAmount)
           };
 
-          const encryptedData = encrypt(JSON.stringify(payload));
+          const encryptedData = encrypt(JSON.stringify(payload), key, iv);
           const response = await axios.post(
             `${process.env.API_BASE_URL}/refundRequest`,
             { data: encryptedData },
@@ -349,8 +351,11 @@ exports.processPendingRefunds = async (req, res) => {
           SOURCE: "PG",
           PORDERID: noteMap.gyfter_orderId // use actual GyFTR Order ID
         };
+        
+        const key = merchant.enc_dec_api_key;   
+        const iv = merchant.enc_dec_api_iv_key;
 
-        const statusResponse = await checkPaymentStatus(requestPayload, userId, password);
+        const statusResponse = await checkPaymentStatus(requestPayload, userId, password, password,key,iv);
 
 
 
@@ -372,7 +377,7 @@ exports.processPendingRefunds = async (req, res) => {
             refundAmount: Number(refundAmount),
           };
 
-          const encryptedData = encrypt(JSON.stringify(payload));
+          const encryptedData = encrypt(JSON.stringify(payload), key, iv);
           //console.log("📤 Encrypted Payload to Send:", encryptedData);
 
           try {
@@ -390,7 +395,7 @@ exports.processPendingRefunds = async (req, res) => {
             );
 
             const encryptedResponse = response.data?.data || response.data;
-            const decrypted = decrypt(encryptedResponse);
+            const decrypted = decrypt(encryptedResponse,key, iv);
             //console.log("🟢 Decrypted Response:", decrypted);
 
             let parsed;
@@ -508,7 +513,7 @@ exports.autoRefund = async (req, res) => {
 
       // Fetch merchant credentials
       const [setting] = await db.query(
-        'SELECT userId, password, shop, accessToken FROM Setting WHERE mid = :mid LIMIT 1',
+        'SELECT * FROM Setting WHERE mid = :mid LIMIT 1',
         {
           replacements: { mid },
           type: db.QueryTypes.SELECT
@@ -533,8 +538,9 @@ exports.autoRefund = async (req, res) => {
         SOURCE: "PG",
         PORDERID: transactionId
       };
-
-      const statusResponse = await checkPaymentStatus(requestPayload, userId, password);
+      const key = setting.enc_dec_api_key;   
+      const iv = setting.enc_dec_api_iv_key;
+      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
 
       // ✅ Proceed only if payment status is success
       if (
@@ -543,7 +549,7 @@ exports.autoRefund = async (req, res) => {
         statusResponse?.data?.remark === 'SUCCESS'
       ) {
         const payload = { transactionId, requestId, refundType, refundAmount };
-        const encryptedData = encrypt(JSON.stringify(payload));
+        const encryptedData = encrypt(JSON.stringify(payload), key, iv);
 
         try {
           const response = await axios.post(
@@ -559,7 +565,7 @@ exports.autoRefund = async (req, res) => {
           );
 
           let encryptedResponse = response.data?.data || response.data;
-          const decrypted = decrypt(encryptedResponse);
+          const decrypted = decrypt(encryptedResponse, key, iv);
 
           let parsed;
           try {
@@ -711,7 +717,8 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
 
       // Fetch merchant credentials
       const [setting] = await db.query(
-        'SELECT userId, password FROM Setting WHERE mid = :mid LIMIT 1',
+        'SELECT * FROM Setting WHERE mid = :mid LIMIT 1',
+
         {
           replacements: { mid },
           type: db.QueryTypes.SELECT
@@ -735,7 +742,9 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
         PORDERID: transactionId
       };
 
-      const statusResponse = await checkPaymentStatus(requestPayload, userId, password);
+      const key = setting.enc_dec_api_key;   
+      const iv = setting.enc_dec_api_iv_key;
+      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
 
       // ✅ Proceed only if payment status is success
       if (
@@ -744,7 +753,7 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
         statusResponse?.data?.remark === 'SUCCESS'
       ) {
         const payload = { transactionId, requestId, refundType, refundAmount };
-        const encryptedData = encrypt(JSON.stringify(payload));
+        const encryptedData = encrypt(JSON.stringify(payload),key,iv);
 
         try {
           const response = await axios.post(
@@ -760,7 +769,7 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
           );
 
           let encryptedResponse = response.data?.data || response.data;
-          const decrypted = decrypt(encryptedResponse);
+          const decrypted = decrypt(encryptedResponse,key,iv);
 
           let parsed;
           try {

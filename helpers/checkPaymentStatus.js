@@ -7,23 +7,23 @@ const API_URL = process.env.API_BASE_URL;
  * @param {Object} payload - Object containing MID, TID, SOURCE, and PORDERID
  * @returns {Object} - Parsed response from GyFTR
  */
-const checkPaymentStatus = async (payload,userId,password) => {
+const checkPaymentStatus = async (payload,userId,password,key,iv) => {
   try {
-    const encryptedData = encrypt(JSON.stringify(payload));
-
-    const headers = {
+    
+     const headers = {
       'Content-Type': 'application/json',
       'userId': userId,  
-      'password': password 
+      'password': password
     };
 
+    const encryptedData = encrypt(JSON.stringify(payload), key, iv);
     const response = await axios.post(
-      `${process.env.API_BASE_URL}/paymentStatus`,
+      `${API_URL}/pgseamlmess-container-node/pg/api/v1/paymentStatus`,
       { data: encryptedData },
       { headers }
     );
 
-    const decryptedData = decrypt(response.data.data);
+    const decryptedData = decrypt(response.data.data, key, iv);
     const parsed = JSON.parse(decryptedData);
 
     // ✅ Wrap the parsed response inside a structure
