@@ -14,9 +14,9 @@ require('./models/GyftrRedemptions');
 
 
 // Call Cron Jon 
-// require('./cronJobs/autoRefunds');
-// require('./cronJobs/AdminRefunds');
-// require('./cronJobs/RefundCallbacknotRecieved');
+require('./cronJobs/autoRefunds');
+require('./cronJobs/AdminRefunds');
+require('./cronJobs/RefundCallbacknotRecieved');
 
 
 
