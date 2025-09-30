@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Middleware to validate the Shopify store (if needed)
 const validateShop = require('../middlewares/validateShop');
-
+const {verifyToken} = require("../middlewares/auth.js")
 // Db Connectivity
 const db = require('../config/dbConnect'); 
 
@@ -14,7 +14,18 @@ const refundController = require('../controllers/refundController');
 const DeleteCoupon = require('../controllers/DeleteCoupon.js');
 const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
 
+const {
+  getSetting,
+  createSetting,
+  updateSetting,
+} = require("../controllers/settingController.js");
 
+
+
+
+router.get("/setting",verifyToken, getSetting);
+router.post("/setting",verifyToken,createSetting);
+router.put("/setting",verifyToken,updateSetting);  
 
 
 // ==========================
