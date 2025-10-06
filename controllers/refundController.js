@@ -115,8 +115,9 @@ exports.orderCreateWebhook = async (req, res) => {
  * Fetches order, encrypts request, sends to GyFTR and parses response
  */
   exports.cartRefund = async (req, res) => {
-  //console.log(req.params);
-  //console.log(req);
+  console.log('Cart refund Reached');
+  console.log(req.params);
+  console.log(req);
   try {
     //const shop = 'gyfterom.myshopify.com'; // Can be dynamic later from req.body.shop
     const shop = req.query.shop;
@@ -203,6 +204,15 @@ exports.orderCreateWebhook = async (req, res) => {
           };
 
           const encryptedData = encrypt(JSON.stringify(payload), key, iv);
+
+          console.log("📤 Refund Payload (before encryption):", JSON.stringify(payload, null, 2));
+          console.log("🔐 Encrypted Refund Payload:", encryptedData);
+          console.log("🌐 Refund API URL:", `${process.env.API_BASE_URL}/refundRequest`);
+          console.log("📦 Axios Request Headers:", {
+            'Content-Type': 'application/json',
+            username: userId,
+            password: password
+          });
           const response = await axios.post(
             `${process.env.API_BASE_URL}/refundRequest`,
             { data: encryptedData },
@@ -217,10 +227,10 @@ exports.orderCreateWebhook = async (req, res) => {
 
           // Handle encrypted response
           const encryptedResponse = response.data?.data || response.data;
-          //console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
+          console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
 
           const decrypted = decrypt(encryptedResponse);
-          //console.log("🟢 Decrypted Response:", decrypted);
+          console.log("🟢 Decrypted Response:", decrypted);
 
           let parsed;
           try {
