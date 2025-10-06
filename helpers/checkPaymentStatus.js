@@ -18,7 +18,7 @@ const checkPaymentStatus = async (payload,userId,password,key,iv) => {
 
     const encryptedData = encrypt(JSON.stringify(payload), key, iv);
     const response = await axios.post(
-      `${API_URL}/pgseamlmess-container-node/pg/api/v1/paymentStatus`,
+      `${process.env.API_BASE_URL}/paymentStatus`,
       { data: encryptedData },
       { headers }
     );
