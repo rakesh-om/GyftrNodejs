@@ -115,8 +115,8 @@ exports.orderCreateWebhook = async (req, res) => {
  * Fetches order, encrypts request, sends to GyFTR and parses response
  */
   exports.cartRefund = async (req, res) => {
-  console.log(req.params);
-  console.log(req);
+  //console.log(req.params);
+  //console.log(req);
   try {
     //const shop = 'gyfterom.myshopify.com'; // Can be dynamic later from req.body.shop
     const shop = req.query.shop;
@@ -139,7 +139,7 @@ exports.orderCreateWebhook = async (req, res) => {
 
     // 🧨 Delete Shopify coupon
     const result = await deleteShopifyCoupon(couponId, shopDomain, accessToken);
-    console.log('coupon delete', JSON.stringify(result));
+    //console.log('coupon delete', JSON.stringify(result));
 
     // 🛑 GraphQL-level error
     if (result.success && result.data.errors && result.data.errors.length > 0) {
@@ -159,7 +159,7 @@ exports.orderCreateWebhook = async (req, res) => {
       deleteData.deletedCodeDiscountId &&
       deleteData.userErrors.length === 0
     ) {
-      console.log(`✅ Deleted coupon ${couponId}:`, result.data);
+      //console.log(`✅ Deleted coupon ${couponId}:`, result.data);
 
       // Step 1: Check GyFTR coupon status
 
@@ -217,10 +217,10 @@ exports.orderCreateWebhook = async (req, res) => {
 
           // Handle encrypted response
           const encryptedResponse = response.data?.data || response.data;
-          console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
+          //console.log("📥 Encrypted response from GyFTR:", encryptedResponse);
 
           const decrypted = decrypt(encryptedResponse, key, iv);
-          console.log("🟢 Decrypted Response:", decrypted);
+          //console.log("🟢 Decrypted Response:", decrypted);
 
           let parsed;
           try {
