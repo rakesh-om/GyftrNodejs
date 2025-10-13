@@ -58,7 +58,7 @@ const Cartdetails = db.define('GyftrRedemptions', {
 // Sync the model with the database
 async function syncDatabase() {
   try {
-    await db.sync({ alter: true }); // or { force: true } to drop & recreate
+    await db.sync(); 
     console.log('✅ Redeem  table synchronized.'); 
   } catch (error) {
     console.error('❌ Failed to sync Cartdetails table:', error);

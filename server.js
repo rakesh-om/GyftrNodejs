@@ -62,7 +62,7 @@ app.get('/', (req, res) => {
 // Sync models and start server
 const PORT = process.env.PORT || 8090;
 
-db.sync({ alter: true }) // Create or update tables
+db.sync() 
   .then(() => {
     console.log('✅ Sequelize models synced successfully.'.green);
     app.listen(PORT, () => {
