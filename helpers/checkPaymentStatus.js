@@ -17,15 +17,37 @@ const checkPaymentStatus = async (payload,userId,password,key,iv) => {
     };
 
     const encryptedData = encrypt(JSON.stringify(payload), key, iv);
+   console.log('🔐 Encrypted payload for /paymentStatus:', encryptedData);
     const response = await axios.post(
       `${process.env.API_BASE_URL}/paymentStatus`,
       { data: encryptedData },
       { headers }
     );
+       const encryptedResponse = response.data?.data;
+    console.log('📦 Raw encrypted response from API:', encryptedResponse);
+    if (!encryptedResponse) {
+      console.error('❌ API response is missing "data" field.');
+      throw new Error('Empty or invalid response from paymentStatus API');
+    }
 
     const decryptedData = decrypt(response.data.data, key, iv);
-    const parsed = JSON.parse(decryptedData);
+    console.log('🔓 Decrypted response:', decryptedData);
+    if (!decryptedData || decryptedData.trim() === '') {
+      console.error('❌ Decrypted response is empty.');
+      throw new Error('Decrypted response is empty or invalid');
+    }
 
+//    const parsed = JSON.parse(decryptedData);
+
+
+     // Parse the decrypted JSON
+    let parsed;
+    try {
+      parsed = JSON.parse(decryptedData);
+    } catch (err) {
+      console.error('❌ Failed to parse decrypted JSON:', decryptedData);
+      throw new Error('Invalid JSON in decrypted response');
+    }
     // ✅ Wrap the parsed response inside a structure
     return {
       success: true,
