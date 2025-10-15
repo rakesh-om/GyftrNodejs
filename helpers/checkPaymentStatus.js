@@ -8,13 +8,14 @@ const API_URL = process.env.API_BASE_URL;
 /**
  * Utility to log refund API request/response to FluentBit
  */
-async function logRefundApi({ apiName, logMsg, request, response }) {
+async function logRefundApi({ apiName, logMsg, porderid, request, response }) {
   try {
     const dbConnection = new FluentBitLogger();
 
     let documentlogs = {
       api_name: apiName || "refundApi",
       log_msg: logMsg || "Refund API call",
+      porderid: porderid || '',
       createdDate: moment().format("YYYY-MM-DD HH:mm:ss"),
       log_data: {
         request,
