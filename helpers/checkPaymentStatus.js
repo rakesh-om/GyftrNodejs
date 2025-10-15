@@ -7,47 +7,40 @@ const API_URL = process.env.API_BASE_URL;
  * @param {Object} payload - Object containing MID, TID, SOURCE, and PORDERID
  * @returns {Object} - Parsed response from GyFTR
  */
-const checkPaymentStatus = async (payload, userId, password, key, iv) => {
+const checkPaymentStatus = async (payload,userId,password,key,iv) => {
   try {
-    const headers = {
+
+     const headers = {
       'Content-Type': 'application/json',
       'userId': userId,
       'password': password
     };
 
-    // Ensure key and IV are strings
-    const keyStr = typeof key === 'string' ? key : key.toString();
-    const ivStr = typeof iv === 'string' ? iv : iv.toString();
-
-    // Encrypt the request payload
-    const encryptedData = encrypt(JSON.stringify(payload), keyStr, ivStr);
-    console.log('🔐 Encrypted payload for /paymentStatus:', encryptedData);
-
-    // Make the API request
+    const encryptedData = encrypt(JSON.stringify(payload), key, iv);
+   console.log('🔐 Encrypted payload for /paymentStatus:', encryptedData);
     const response = await axios.post(
-      `${API_URL}/paymentStatus`,
+      `${process.env.API_BASE_URL}/paymentStatus`,
       { data: encryptedData },
       { headers }
     );
-
-    const encryptedResponse = response.data?.data;
+       const encryptedResponse = response.data?.data;
     console.log('📦 Raw encrypted response from API:', encryptedResponse);
-
     if (!encryptedResponse) {
       console.error('❌ API response is missing "data" field.');
       throw new Error('Empty or invalid response from paymentStatus API');
     }
 
-    // Decrypt the response
-    const decryptedData = decrypt(encryptedResponse, keyStr, ivStr);
+    const decryptedData = decrypt(response.data.data, key, iv);
     console.log('🔓 Decrypted response:', decryptedData);
-
     if (!decryptedData || decryptedData.trim() === '') {
       console.error('❌ Decrypted response is empty.');
       throw new Error('Decrypted response is empty or invalid');
     }
 
-    // Parse the decrypted JSON
+//    const parsed = JSON.parse(decryptedData);
+
+
+     // Parse the decrypted JSON
     let parsed;
     try {
       parsed = JSON.parse(decryptedData);
@@ -55,8 +48,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
       console.error('❌ Failed to parse decrypted JSON:', decryptedData);
       throw new Error('Invalid JSON in decrypted response');
     }
-
-    // ✅ Return successful result
+    // ✅ Wrap the parsed response inside a structure
     return {
       success: true,
       data: parsed
