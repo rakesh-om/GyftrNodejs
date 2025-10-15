@@ -356,7 +356,7 @@ exports.processPendingRefunds = async (req, res) => {
         const key = merchant.enc_dec_api_key;   
         const iv = merchant.enc_dec_api_iv_key;
         const porderid = noteMap.gyfter_orderId;
-        const statusResponse = await checkPaymentStatus(requestPayload, userId, password, password,key,iv,porderid);
+        const statusResponse = await checkPaymentStatus(requestPayload, userId, password, key,iv,porderid);
 
 
 
