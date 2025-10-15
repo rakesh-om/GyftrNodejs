@@ -188,7 +188,8 @@ exports.orderCreateWebhook = async (req, res) => {
 
         const key = merchant.enc_dec_api_key;   
         const iv = merchant.enc_dec_api_iv_key;
-        const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
+        const porderid = transactionId;
+        const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv,porderid);
 
         if (
           statusResponse?.success &&
@@ -354,8 +355,8 @@ exports.processPendingRefunds = async (req, res) => {
         
         const key = merchant.enc_dec_api_key;   
         const iv = merchant.enc_dec_api_iv_key;
-
-        const statusResponse = await checkPaymentStatus(requestPayload, userId, password, password,key,iv);
+        const porderid = noteMap.gyfter_orderId;
+        const statusResponse = await checkPaymentStatus(requestPayload, userId, password, password,key,iv,porderid);
 
 
 
@@ -540,7 +541,8 @@ exports.autoRefund = async (req, res) => {
       };
       const key = setting.enc_dec_api_key;   
       const iv = setting.enc_dec_api_iv_key;
-      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
+      const porderid = transactionId;
+      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv,porderid);
 
       // ✅ Proceed only if payment status is success
       if (
@@ -744,7 +746,8 @@ exports.refundCallbacknotRecieved = async (req, res) =>{
 
       const key = setting.enc_dec_api_key;   
       const iv = setting.enc_dec_api_iv_key;
-      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv);
+      const porderid = transactionId;
+      const statusResponse = await checkPaymentStatus(requestPayload, userId, password,key,iv,porderid);
 
       // ✅ Proceed only if payment status is success
       if (

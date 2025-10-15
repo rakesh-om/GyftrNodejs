@@ -125,7 +125,7 @@ exports.initiatePayment = async (req, res) => {
         apiName: 'initiatePayment',
         logMsg: 'Merchant fetch query result',
         request: {
-          sql: 'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
+         
           params: { shopId }
         },
         response: merchant
@@ -381,7 +381,6 @@ exports.handleCallback = async (req, res) => {
       apiName: 'callbackRecieved',
       logMsg: 'Merchant fetch query result',
       request: {
-        sql: 'SELECT reverse_salt FROM Setting WHERE mid = :mid LIMIT 1',
         params: { mid }
       },
       response: merchant

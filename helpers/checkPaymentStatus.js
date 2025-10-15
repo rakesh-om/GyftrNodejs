@@ -53,7 +53,7 @@ async function logRefundApi({ apiName, logMsg, request, response }) {
  * @param {Object} payload - Object containing MID, TID, SOURCE, and PORDERID
  * @returns {Object} - Parsed response from GyFTR
  */
-const checkPaymentStatus = async (payload, userId, password, key, iv) => {
+const checkPaymentStatus = async (payload, userId, password, key, iv,porderid) => {
   try {
     const headers = {
       'Content-Type': 'application/json',
@@ -68,7 +68,8 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
     await logRefundApi({
       apiName: 'checkPaymentStatus',
       logMsg: 'Refund API request initiated',
-      request: { payload, headers },
+      porderid:porderid,
+      request: { payload},
       response: { api_url: `${API_URL}/paymentStatus` }
     });
 
@@ -86,6 +87,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
       await logRefundApi({
         apiName: 'checkPaymentStatus',
         logMsg: 'Empty response from GyFTR',
+        porderid:porderid,
         request: { payload },
         response: { error: 'Missing data field' }
       });
@@ -100,6 +102,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
       await logRefundApi({
         apiName: 'checkPaymentStatus',
         logMsg: 'Decrypted response empty',
+        porderid:porderid,
         request: { payload },
         response: { decryptedData }
       });
@@ -115,6 +118,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
       await logRefundApi({
         apiName: 'checkPaymentStatus',
         logMsg: 'Failed to parse decrypted JSON',
+        porderid:porderid,
         request: { payload },
         response: { decryptedData }
       });
@@ -125,6 +129,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
     await logRefundApi({
       apiName: 'checkPaymentStatus',
       logMsg: 'Refund API successful response',
+      porderid:porderid,
       request: { payload },
       response: parsed
     });
@@ -142,6 +147,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv) => {
     await logRefundApi({
       apiName: 'checkPaymentStatus',
       logMsg: 'Refund API error occurred',
+      porderid:porderid,
       request: { payload },
       response: { error: err.message || err.toString() }
     });
