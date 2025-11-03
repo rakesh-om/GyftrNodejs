@@ -21,6 +21,12 @@ const {
 } = require("../controllers/settingController.js");
 
 
+import {
+  customerDataRequest,
+  customerRedact,
+  shopRedact,
+} from "./controllers/gdpr.js";
+
 
 
 router.get("/setting",verifyToken, getSetting);
@@ -137,6 +143,47 @@ router.post('/webhooks/app/scopes_update', (req, res) => {
   res.sendStatus(200);
 });
 
+
+router.post("/gdpr/:topic", verifyHmac, async (req, res) => {
+    try {
+        const { body } = req;
+        const { topic } = req.params;
+        const shop = body.shop_domain || body.shop_domain_name;
+
+        console.warn(`--> GDPR request for ${shop} / ${topic} received.`);
+
+        let response = { success: false };
+
+        switch (topic) {
+          case "customers_data_request":
+            response = await customerDataRequest(topic, shop, body);
+            break;
+
+          case "customers_redact":
+            response = await customerRedact(topic, shop, body);
+            break;
+
+          case "shop_redact":
+            response = await shopRedact(topic, shop, body);
+            break;
+
+          default:
+            console.error(`❌ Unknown GDPR topic received: ${topic}`);
+            response = { success: false };
+            break;
+        }
+
+        if (response.success) {
+          res.status(200).send("OK");
+        } else {
+          res.status(400).send("Error processing GDPR request");
+        }
+      } catch (error) {
+        console.error("❌ GDPR webhook error:", error);
+        res.status(500).send("Internal Server Error");
+      }
+  
+  });
 
 // ================================
 // Update Attribute
