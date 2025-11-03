@@ -144,52 +144,82 @@ router.post('/webhooks/app/scopes_update', (req, res) => {
 });
 
 
-router.post("/gdpr/:topic", verifyHmac, async (req, res) => {
-    try {
-        const { body } = req;
-        const { topic } = req.params;
-        const shop = body.shop_domain || body.shop_domain_name;
+// router.post("/gdpr/:topic", verifyHmac, async (req, res) => {
+//     try {
+//         const { body } = req;
+//         const { topic } = req.params;
+//         const shop = body.shop_domain || body.shop_domain_name;
 
-        console.warn(`--> GDPR request for ${shop} / ${topic} received.`);
+//         console.warn(`--> GDPR request for ${shop} / ${topic} received.`);
 
-        let response = { success: false };
+//         let response = { success: false };
 
-        switch (topic) {
-          case "customers_data_request":
-            response = await customerDataRequest(topic, shop, body);
-            break;
+//         switch (topic) {
+//           case "customers_data_request":
+//             response = await customerDataRequest(topic, shop, body);
+//             break;
 
-          case "customers_redact":
-            response = await customerRedact(topic, shop, body);
-            break;
+//           case "customers_redact":
+//             response = await customerRedact(topic, shop, body);
+//             break;
 
-          case "shop_redact":
-            response = await shopRedact(topic, shop, body);
-            break;
+//           case "shop_redact":
+//             response = await shopRedact(topic, shop, body);
+//             break;
 
-          default:
-            console.error(`❌ Unknown GDPR topic received: ${topic}`);
-            response = { success: false };
-            break;
-        }
+//           default:
+//             console.error(`❌ Unknown GDPR topic received: ${topic}`);
+//             response = { success: false };
+//             break;
+//         }
 
-        if (response.success) {
-          res.status(200).send("OK");
-        } else {
-          res.status(400).send("Error processing GDPR request");
-        }
-      } catch (error) {
-        console.error("❌ GDPR webhook error:", error);
-        res.status(500).send("Internal Server Error");
-      }
+//         if (response.success) {
+//           res.status(200).send("OK");
+//         } else {
+//           res.status(400).send("Error processing GDPR request");
+//         }
+//       } catch (error) {
+//         console.error("❌ GDPR webhook error:", error);
+//         res.status(500).send("Internal Server Error");
+//       }
   
-  });
+//   });
 
 // ================================
 // Update Attribute
 //=================================
 
 // Update attribute if coupon  remove from cart page
+
+
+
+router.post("/gdpr", verifyHmac, async (req, res) => {
+  const topic = req.headers["x-shopify-topic"];
+  const shop = req.headers["x-shopify-shop-domain"];
+  const body = req.body;
+  
+  console.warn(`--> GDPR request for ${shop} / ${topic} received.`);
+
+  let response = { success: false };
+
+  switch (topic) {
+    case "customers/data_request":
+      response = await customerDataRequest(topic, shop, body);
+      break;
+    case "customers/redact":
+      response = await customerRedact(topic, shop, body);
+      break;
+    case "shop/redact":
+      response = await shopRedact(topic, shop, body);
+      break;
+    default:
+      console.error(`❌ Unknown GDPR topic: ${topic}`);
+      break;
+  }
+
+  if (response.success) return res.status(200).send("OK");
+  res.status(400).send("Error processing GDPR request");
+});
 
 router.post('/updateAttribute',UpdateAttribute.updateAttribute);
 
