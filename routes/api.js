@@ -21,7 +21,8 @@ const {
 } = require("../controllers/settingController.js");
 
 
-const { verifyHmac } = require('../middlewares/verifyHmac.js');
+const verifyHmac = require('../middlewares/verifyHmac.js');
+
 const {
   customerDataRequest,
   customerRedact,

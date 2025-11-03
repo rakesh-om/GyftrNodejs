@@ -1,4 +1,4 @@
-import crypto from "crypto";
+const crypto = require("crypto");
 
 const verifyHmac = (req, res, next) => {
   try {
@@ -6,7 +6,9 @@ const verifyHmac = (req, res, next) => {
     const body = JSON.stringify(req.body);
     const secret = process.env.SHOPIFY_API_SECRET;
 
-    const hash = crypto.createHmac("sha256", secret).update(body, "utf8").digest("base64");
+    const hash = crypto.createHmac("sha256", secret)
+      .update(body, "utf8")
+      .digest("base64");
 
     const valid = crypto.timingSafeEqual(
       Buffer.from(hash, "utf8"),
@@ -26,4 +28,4 @@ const verifyHmac = (req, res, next) => {
   }
 };
 
-export default verifyHmac;
+module.exports = verifyHmac;
