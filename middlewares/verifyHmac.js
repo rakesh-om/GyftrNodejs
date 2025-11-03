@@ -22,8 +22,8 @@ const verifyHmac = (req, res, next) => {
 
     // Use timing-safe comparison
     const valid = crypto.timingSafeEqual(
-      Buffer.from(hash, "utf8"),
-      Buffer.from(hmacHeader, "utf8")
+      Buffer.from(generateHash, "utf8"),
+      Buffer.from(hmac, "utf8")
     );
 
     if (!valid) {
