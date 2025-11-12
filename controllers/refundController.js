@@ -59,7 +59,15 @@ exports.saveRefundwebhook = async (req, res) => {
   console.log('Grand Total:', grandTotal);
   console.log('Total Discount:', couponValue);
   console.log('refund amount', amount);
-  return res.status(200).json({ message: 'Refund webhook saved successfully' });
+
+  // ✅ Calculate final amount safely
+  let finalAmount = 0;
+  if (grandTotal > 0 && couponValue > 0) {
+    finalAmount = (amount / grandTotal) * couponValue;
+  }
+ 
+  console.log('final_amount', finalAmount);
+  //return res.status(200).json({ message: 'Refund webhook saved successfully' });
     // Prepare data to store in DB
     const payloadToStore = {
       refund_webhook_req: JSON.stringify(refundData),
@@ -67,7 +75,7 @@ exports.saveRefundwebhook = async (req, res) => {
       shop_id: refundData?.user_id?.toString() || null,
       shop_order_id: orderId,
       refunded: false,
-      refund_amount: amount
+      refund_amount: finalAmount
     };
 
     // Save refund webhook to database
