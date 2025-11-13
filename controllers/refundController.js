@@ -24,71 +24,50 @@ exports.saveRefundwebhook = async (req, res) => {
   try {
     const shop = req.query.shop;
     const refundData = req.body;
+
+    //Extract refund-level details
     const amount = refundData?.transactions?.[0]?.amount || null;
     const orderId = refundData?.order_id || null;
 
-    // 🔍 Lookup merchant
-    const [merchant] = await db.query(
-      'SELECT * FROM Setting WHERE shop = :shop',
-      {
-        replacements: { shop },
-        type: db.QueryTypes.SELECT
-      }
-    );
-    if (!merchant || merchant.length === 0) {
-      return res.status(404).json({ error: 'Merchant not found' });
+    //Calculate total refunded item amount
+    let itemTotal = 0;
+
+    if (Array.isArray(refundData.refund_line_items)) {
+      itemTotal = refundData.refund_line_items.reduce((sum, item) => {
+        const price = parseFloat(item?.line_item?.price || 0);
+        const qty = parseInt(item?.quantity || 0);
+        return sum + price * qty;
+      }, 0);
     }
 
-    const { accessToken} = merchant;
-
-     // Step 3: Fetch Shopify order details
-     const orderResponse = await axios.get(
-      `https://${shop}/admin/api/2024-01/orders/${orderId}.json`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const order = orderResponse.data.order;
-    // 🟢 Extract totals
-  const grandTotal = parseFloat(order.total_price);
-  const couponValue = parseFloat(order.total_discounts);
-  console.log('Grand Total:', grandTotal);
-  console.log('Total Discount:', couponValue);
-  console.log('refund amount', amount);
-
-  // ✅ Calculate final amount safely
-  let finalAmount = 0;
-  if (grandTotal > 0 && couponValue > 0) {
-    finalAmount = (amount / grandTotal) * couponValue;
-  }
- 
-  console.log('final_amount', finalAmount);
-  //return res.status(200).json({ message: 'Refund webhook saved successfully' });
-    // Prepare data to store in DB
+    //Prepare data for DB
     const payloadToStore = {
       refund_webhook_req: JSON.stringify(refundData),
       shop_name: shop || null,
       shop_id: refundData?.user_id?.toString() || null,
       shop_order_id: orderId,
       refunded: false,
-      refund_amount: finalAmount
+      refund_amount: amount,
+      item_total: itemTotal.toFixed(2)
     };
 
-    // Save refund webhook to database
+    //Save refund webhook to database
     await RefundData.create(payloadToStore);
 
-    console.log('✅ Webhook data saved');
-    return res.status(200).json({ message: 'Refund webhook saved successfully' });
+    console.log('✅ Refund webhook saved successfully');
+    console.log('🧾 Item Total:', itemTotal);
+
+    return res.status(200).json({
+      message: 'Refund webhook saved successfully',
+      item_total: itemTotal
+    });
 
   } catch (error) {
-    console.error('❌ Error saving webhook data:', error.message);
+    console.error('❌ Error saving webhook data:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 /**
  * Webhook handler for order creation event
