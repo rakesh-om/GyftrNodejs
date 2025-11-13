@@ -12,6 +12,10 @@ const Cartdetails = db.define('Refund', {
     type: DataTypes.STRING(100),
     allowNull: true
   },
+  item_total: {
+    type: DataTypes.INTEGER(100),
+    allowNull: true
+  },
   refund_webhook_req: {
     type: DataTypes.TEXT('long'),
     allowNull: true

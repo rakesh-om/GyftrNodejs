@@ -20,7 +20,7 @@ function generateRequestId() {
  * Webhook handler to save refund request data
  */
 exports.saveRefundwebhook = async (req, res) => {
-  console.log('Received refund webhook');
+  console.log(' Received refund webhook');
   try {
     const shop = req.query.shop;
     const refundData = req.body;
@@ -341,6 +341,8 @@ exports.processPendingRefunds = async (req, res) => {
       const password = merchant.password;
       const mid = merchant.mid;
 
+      // Step 2.a: Fetch item total and prepare refund amount
+
       // Step 3: Fetch Shopify order details
       const orderResponse = await axios.get(
         `https://${shop}/admin/api/2024-01/orders/${orderId}.json`,
@@ -358,6 +360,18 @@ exports.processPendingRefunds = async (req, res) => {
       noteAttributes.forEach(attr => {
         noteMap[attr.name] = attr.value;
       });
+
+      // Step 3.a: Fetch item total and prepare refund amount
+
+        const item_total = refund.item_total;
+        const order_total = parseFloat(order.total_price);
+        const couponValue = parseFloat(order.total_discounts);
+        let final_refund_amount = 0;
+
+        if(item_total > 0 && order_total > 0){
+          final_refund_amount = (item_total/order_total) * couponValue;
+        }
+        console.log('Final Refund Amount', final_amount_refund);
 
       // Step 4: Validate if order qualifies for GyFTR refund
       if (
@@ -388,7 +402,7 @@ exports.processPendingRefunds = async (req, res) => {
           statusResponse?.data?.remark === 'SUCCESS'
         ) {
           const transactionId = noteMap.gyfter_orderId;
-          const refundAmount = noteMap.gyfter_amount;
+          //const refundAmount = noteMap.gyfter_amount;
           const requestId = generateRequestId();
           const refundType = 'B2S';
 
@@ -396,7 +410,7 @@ exports.processPendingRefunds = async (req, res) => {
             transactionId,
             requestId,
             refundType,
-            refundAmount: Number(refundAmount),
+            refundAmount: Number(final_refund_amount),
           };
 
           const encryptedData = encrypt(JSON.stringify(payload), key, iv);
