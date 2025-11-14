@@ -341,6 +341,9 @@ exports.processPendingRefunds = async (req, res) => {
       const password = merchant.password;
       const mid = merchant.mid;
 
+
+      
+
       // Step 2.a: Fetch item total and prepare refund amount
 
       // Step 3: Fetch Shopify order details
@@ -375,22 +378,22 @@ exports.processPendingRefunds = async (req, res) => {
 
       // Step 4: Validate if order qualifies for GyFTR refund
       if (
-        noteMap.use_gyfter === 'yes' &&
-        noteMap.gyfter_amount &&
-        noteMap.gyfter_coupon &&
-        noteMap.gyfter_orderId
+        noteMap.use_gyftr === 'yes' &&
+        noteMap.gyftr_amount &&
+        noteMap.gyftr_coupon &&
+        noteMap.gyftr_orderId
       ) {
         // Step 5: Check GyFTR payment status before refund
         const requestPayload = {
           MID: mid,
           TID: "",
           SOURCE: "PG",
-          PORDERID: noteMap.gyfter_orderId // use actual GyFTR Order ID
+          PORDERID: noteMap.gyftr_orderId // use actual GyFTR Order ID
         };
         
         const key = merchant.enc_dec_api_key;   
         const iv = merchant.enc_dec_api_iv_key;
-        const porderid = noteMap.gyfter_orderId;
+        const porderid = noteMap.gyftr_orderId;
         const statusResponse = await checkPaymentStatus(requestPayload, userId, password, key,iv,porderid);
 
 
@@ -401,7 +404,7 @@ exports.processPendingRefunds = async (req, res) => {
           statusResponse?.data?.status === 'TXN_SUCCESS' &&
           statusResponse?.data?.remark === 'SUCCESS'
         ) {
-          const transactionId = noteMap.gyfter_orderId;
+          const transactionId = noteMap.gyftr_orderId;
           //const refundAmount = noteMap.gyfter_amount;
           const requestId = generateRequestId();
           const refundType = 'B2S';
