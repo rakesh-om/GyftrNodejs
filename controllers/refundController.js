@@ -371,7 +371,7 @@ exports.processPendingRefunds = async (req, res) => {
         if(item_total > 0 && order_total > 0){
           final_refund_amount = (item_total/order_total) * couponValue;
         }
-        console.log('Final Refund Amount', final_amount_refund);
+        console.log('Final Refund Amount', final_refund_amount);
 
       // Step 4: Validate if order qualifies for GyFTR refund
       if (
