@@ -342,10 +342,6 @@ exports.processPendingRefunds = async (req, res) => {
       const mid = merchant.mid;
 
 
-      
-
-      // Step 2.a: Fetch item total and prepare refund amount
-
       // Step 3: Fetch Shopify order details
       const orderResponse = await axios.get(
         `https://${shop}/admin/api/2024-01/orders/${orderId}.json`,
@@ -371,9 +367,29 @@ exports.processPendingRefunds = async (req, res) => {
         const couponValue = parseFloat(order.total_discounts);
         let final_refund_amount = 0;
 
-        if(item_total > 0 && order_total > 0){
-          final_refund_amount = (item_total/order_total) * couponValue;
+        
+
+        // Step 3.b: Fetch total from Cartdetails table using porderid
+        const [cartData] = await db.query(
+          "SELECT total FROM Cartdetails WHERE porderid = :porderid LIMIT 1",
+          {
+            replacements: { porderid: noteMap.gyftr_orderId },
+            type: db.QueryTypes.SELECT
+          }
+        );
+
+        let cart_total = 0;
+        if (cartData && cartData.total) {
+          cart_total = Math.floor(cartData.total * 100) / 100;
         }
+
+        if(item_total > 0 && order_total > 0){
+          final_refund_amount = (item_total/cart_total) * couponValue;
+        }
+
+        console.log('item_total', item_total);
+        console.log('cart_total', cart_total);
+        console.log('coupon value', couponValue);
         console.log('Final Refund Amount', final_refund_amount);
 
       // Step 4: Validate if order qualifies for GyFTR refund
@@ -396,7 +412,7 @@ exports.processPendingRefunds = async (req, res) => {
         const porderid = noteMap.gyftr_orderId;
         const statusResponse = await checkPaymentStatus(requestPayload, userId, password, key,iv,porderid);
 
-
+        
 
         // ✅ Proceed only if payment status is success
         if (
