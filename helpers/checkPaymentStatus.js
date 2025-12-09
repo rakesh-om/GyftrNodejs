@@ -63,7 +63,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv,porderid) =
     };
 
     const encryptedData = encrypt(JSON.stringify(payload), key, iv);
-    console.log('🔐 Encrypted payload for /paymentStatus:', encryptedData);
+    //console.log('🔐 Encrypted payload for /paymentStatus:', encryptedData);
 
     // Log request before calling API
     await logRefundApi({
@@ -96,7 +96,7 @@ const checkPaymentStatus = async (payload, userId, password, key, iv,porderid) =
     }
 
     const decryptedData = decrypt(response.data.data, key, iv);
-    console.log('🔓 Decrypted response:', decryptedData);
+    //console.log('🔓 Decrypted response:', decryptedData);
 
     if (!decryptedData || decryptedData.trim() === '') {
       console.error('❌ Decrypted response is empty.');

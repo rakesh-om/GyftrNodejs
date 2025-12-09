@@ -13,6 +13,11 @@ const paymentController = require('../controllers/paymentController.js');
 const refundController = require('../controllers/refundController');
 const DeleteCoupon = require('../controllers/DeleteCoupon.js');
 const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
+const { getWalletBalance } = require('../controllers/getBalanceController');
+
+
+router.post('/get-balance', verifyToken, getWalletBalance);
+
 
 const {
   getSetting,
