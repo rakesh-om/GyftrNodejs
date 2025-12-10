@@ -4,7 +4,6 @@ const router = express.Router();
 // Middleware to validate the Shopify store (if needed)
 const validateShop = require('../middlewares/validateShop');
 const {verifyToken} = require("../middlewares/auth.js")
-// Db Connectivity
 const db = require('../config/dbConnect'); 
 
 // Controllers
@@ -16,7 +15,12 @@ const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
 const { getWalletBalance } = require('../controllers/getBalanceController');
 
 
-router.post('/get-balance', verifyToken, getWalletBalance);
+const { walletRedemption } = require('../controllers/walletRedemptionController');
+router.post('/get-balance', getWalletBalance);
+
+
+router.post('/wallet-redemption', walletRedemption);
+
 
 
 const {

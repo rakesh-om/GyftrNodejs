@@ -1,29 +1,37 @@
-// /controllers/getBalanceController.js
 const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
+const Balance = require('../models/Balance');
 
-// GyFTR credentials and API info (keep in env variables ideally)
-const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
-const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
-const GYFTR_API_URL = process.env.GYFTR_API_URL || 'https://gyfter.example.com/getWalletBalance';
-const GYFTR_KEY = process.env.GYFTR_KEY || 'mvPjj93b78BOuupjmETBBY6yrQGhbizC'; // 32-byte
-const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; // 16-byte
+const GYFTR_USERID = process.env.GYFTR_USERID;
+const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD;
+const GYFTR_API_URL = process.env.GYFTR_TEST_URL;
+const GYFTR_KEY = process.env.GYFTR_KEY;
+const GYFTR_IV = process.env.GYFTR_IV;
+console.log("🔍 ENV DEBUG CHECK:");
+console.log("➡️ GYFTR_USERID:", process.env.GYFTR_USERID ? "Loaded ✔️" : "❌ Missing");
+console.log("➡️ GYFTR_PASSWORD:", process.env.GYFTR_PASSWORD ? "Loaded ✔️" : "❌ Missing");
+console.log("➡️ GYFTR_API_URL:", process.env.GYFTR_TEST_URL);
+console.log("➡️ GYFTR_KEY:", process.env.GYFTR_KEY ? "***MASKED***" : "❌ Missing");
+console.log("➡️ GYFTR_IV:", process.env.GYFTR_IV ? "***MASKED***" : "❌ Missing");
 
-// Controller to get wallet balance
 exports.getWalletBalance = async (req, res) => {
-  try {
-    const { MOBILE, MID, TID, EREFNO } = req.body;
+  console.log("🔥 Request Received at /get-balance");
 
-    // Validate required parameters
+  try {
+    let { MOBILE, MID, TID, EREFNO } = req.body;
+
     if (!MOBILE || !MID || !TID) {
       return res.status(400).json({ error: 'MOBILE, MID and TID are required' });
     }
 
-    // Create payload and encrypt
-    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO });
-    const encryptedPayload = { data: encrypt(payload, GYFTR_KEY, GYFTR_IV) };
+    EREFNO = EREFNO || Date.now().toString();
 
-    // Call GyFTR API
+    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO });
+    console.log("📝 Raw Payload:", payload);
+
+    const encryptedPayload = { data: encrypt(payload) };
+    console.log("🔐 Encrypted Payload:", encryptedPayload);
+
     const response = await axios.post(GYFTR_API_URL, encryptedPayload, {
       headers: {
         'Content-Type': 'application/json',
@@ -32,11 +40,20 @@ exports.getWalletBalance = async (req, res) => {
       }
     });
 
-    // Decrypt GyFTR response
+    console.log("📩 Raw Encrypted Response:", response.data);
+
     const decryptedData = decrypt(response.data.data, GYFTR_KEY, GYFTR_IV);
+    console.log("🔓 Decrypted Response:", decryptedData);
+
     const parsed = JSON.parse(decryptedData);
 
-    // Send response to frontend
+    if (parsed.BALANCE !== undefined) {
+      await Balance.upsert({
+        shop: MID,
+        remaining_balance: parseFloat(parsed.BALANCE)
+      });
+    }
+
     return res.json({
       code: parsed.CODE,
       message: parsed.MESSAGE,
@@ -44,7 +61,7 @@ exports.getWalletBalance = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Get Wallet Balance Error:', err.message);
+    console.error('❌ Get Wallet Balance Error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch wallet balance' });
   }
 };
