@@ -2,18 +2,19 @@ const { DataTypes } = require('sequelize');
 const db = require('../config/dbConnect');
 
 const Balance = db.define('Balance', {
-  shop: {
+    userId: {
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
+    allowNull: false
   },
-  remaining_balance: {
+  balance:{
     type: DataTypes.FLOAT,
-    defaultValue: 0
+    allowNull: false,
+    defaultValue: 0.0
   }
+  
 }, {
   tableName: 'Balance',
-  timestamps: true
+  timestamps: true,
 });
 
-module.exports = Balance;
+module.exports = {Balance};
