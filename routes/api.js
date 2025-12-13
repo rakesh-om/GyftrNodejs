@@ -13,7 +13,9 @@ const refundController = require('../controllers/refundController');
 const DeleteCoupon = require('../controllers/DeleteCoupon.js');
 const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
 const { getWalletBalance } = require('../controllers/getBalanceController');
-
+const { loadWallet } = require('../controllers/loadWalletController.js');
+const { generateOtp } = require('../controllers/generateOtp.js');
+const { walletRedemption } = require('../controllers/getBalanceController.js');
 
 const { walletRedemption } = require('../controllers/walletRedemptionController');
 router.post('/get-balance', getWalletBalance);
@@ -117,6 +119,21 @@ router.post('/webbbbhooksssss/app/uninstalled', (req, res) => {
   console.log("App uninstalled webhook received:", req.body);
   res.sendStatus(200);
 });
+
+
+// Epay Ballance
+router.post('/getEpayBalance', getWalletBalance);
+
+//load Wallet
+router.post('/loadWallet', loadWallet); 
+
+//Geneate OTP
+router.post('/generateOtp', generateOtp);
+
+//Waller redemption
+router.post('/walletRedemption', walletRedemption);
+
+
 
 // App Uninstalled Webhook
 router.post('/webhooks/app/uninstalled', async (req, res) => {
