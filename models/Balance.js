@@ -2,10 +2,9 @@ const { DataTypes } = require('sequelize');
 const db = require('../config/dbConnect');
 
 const Balance = db.define('Balance', {
-    userId: {
+    userid: {
     type: DataTypes.STRING,
-    allowNull: false
-  },
+    allowNull: false  },
   balance:{
     type: DataTypes.FLOAT,
     allowNull: false,

@@ -1,4 +1,3 @@
-// controllers/walletRedemptionController.js
 const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
 const GyftrRedemptions = require('../models/GyftrRedemptions'); // DB Model
@@ -7,7 +6,6 @@ const GYFTR_USERID = process.env.GYFTR_USERID;
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD;
 const GYFTR_REDEEM_URL = process.env.GYFTR_REDEEM_URL || process.env.GYFTR_TEST_URL;
 
-// Validate required fields
 function validateRequest(body) {
   const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'OTP', 'SOURCE', 'BILLNO', 'BILLVALUE'];
   const missing = required.filter(k => !body[k] || String(body[k]).trim() === '');
@@ -98,7 +96,9 @@ const walletRedemption = async (req, res) => {
         redeemed_at: new Date()
       });
 
-      console.log("✅ Redemption logged in DB");
+      console.log("Redemption logged in DB");
+  
+       
 
       return res.status(200).json({
         success: true,
