@@ -51,3 +51,4 @@ class PaymentFormHelper {
 }
 
 module.exports = PaymentFormHelper;
+  

@@ -11,6 +11,8 @@ require('./models/Cartdetails');
 require('./models/RefundData');
 require('./models/WebhookData');
 require('./models/GyftrRedemptions');
+require('./models/Balance')
+
 
 
 
@@ -27,12 +29,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 // CORS settings
 
-/*
-const cors = require('cors');
+
+// const cors = require('cors');
 const allowedOrigins = [
   /^https:\/\/.*\.myshopify\.com$/,  // any Shopify store
   /^https:\/\/.*\.gyftr\.net$/,      // any gyftr.net subdomain
-  /^https:\/\/gyftr\.net$/           // root
+  /^https:\/\/gyftr\.net$/,
+  '*'         // root
 ];
 
 app.use(cors({
@@ -49,7 +52,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
-*/
+
 
 // Routes
 const gyfterPayRoutes = require('./routes/api');
@@ -62,8 +65,9 @@ app.get('/', (req, res) => {
 
 // Sync models and start server
 const PORT = process.env.PORT || 8090;
+console.log("🚀 ~ PORT:", PORT)
 
-db.sync() 
+db.sync({alter: true}) 
   .then(() => {
     console.log('✅ Sequelize models synced successfully.'.green);
     app.listen(PORT, () => {

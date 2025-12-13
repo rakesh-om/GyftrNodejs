@@ -7,7 +7,7 @@ const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
 const GYFTR_API_URL = process.env.GYFTR_TEST_URL || 'https://gyfter.example.com/getWalletBalance';
 const GYFTR_KEY = process.env.GYFTR_KEY || 'mvPjj93b78BOuupjmETBBY6yrQGhbizC'; // 32-byte
-const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; // 16-byte
+const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; 
 console.log('GYFTR_KEY:', GYFTR_KEY);
 console.log('GYFTR_IV:', GYFTR_IV);
 
@@ -51,7 +51,7 @@ exports.getWalletBalance = async (req, res) => {
     const balance = parsed.BALANCE;
     console.log('Wallet Balance:', balance);
 
-   await Balance.upsert({ userId: userid, balance: balance });
+   await Balance.upsert({ userid: userid, balance: balance });
 
     // Send response to frontend
     return res.json({
@@ -73,11 +73,7 @@ function validateRequest(body) {
   return { ok: missing.length === 0, missing };
 }
  
-// DB duplicate check
-// async function isOrderUnique(PORDERID) {
-//   const exists = await GyftrRedemptions.findOne({ where: { requestid: PORDERID } });
-//   return !exists;
-// }
+
  
 exports.walletRedemption = async (req, res) => {
   try {
@@ -103,12 +99,7 @@ exports.walletRedemption = async (req, res) => {
     const amt = parseFloat(body.AMOUNT);
     if (isNaN(amt)) return res.status(400).json({ message: "Invalid amount" });
     body.AMOUNT = amt.toFixed(2);
- 
-    // const isUnique = await isOrderUnique(body.PORDERID);
-    // if (!isUnique) {
-    //   return res.status(409).json({ message: "Duplicate PORDERID exists. Redemption not allowed." });
-    // }
- 
+
     const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE });
  
     console.log("Plain Payload:", payload);
@@ -135,29 +126,6 @@ exports.walletRedemption = async (req, res) => {
     const code = parsed.CODE;
     const message = parsed.MESSAGE ?? "";
  
-    
-    // if (code === "00") {
-    //   // 🔥 SUCCESS — SAVE TO DB
-    //   await GyftrRedemptions.create({
-    //     mobile: parsed.MOBILE,
-    //     gytr_order_id: parsed.TXNID,
-    //     coupon_code: parsed.COUPONCODE,
-    //     coupon_id: parsed.COUPONID,
-    //     amount: parsed.AMOUNT,
-    //     mid: parsed.MID,
-    //     requestid: parsed.PORDERID,
-    //     redeemed_at: new Date()
-    //   });
- 
-    //   console.log("✅ Redemption logged in DB");
- 
-    //   return res.status(200).json({
-    //     success: true,
-    //     code,
-    //     message,
-    //     data: parsed
-    //   });
-    // }
  
 return res.status(200).json({
       success: code === "00",
@@ -174,6 +142,91 @@ return res.status(200).json({
     });
   }
 };
+
+
+
+
+// exports.applyGiftCart = async (req, res) => {
+  
+ 
+//   try {
+//     console.log("➡ Applying Gift Card...");
+
+//     const { cartId, giftCardCode } = req.body;
+
+//     if (!cartId || !giftCardCode) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "cartId and giftCardCode are required",
+//       });
+//     }
+
+//     // Shopify Storefront Access Token
+//     const STOREFRONT_TOKEN = "32ef2e8324437b946d64b55405ae55ce";
+
+//     // Shopify Store Domain
+//     const SHOP_DOMAIN = "gyft-staging.myshopify.com";
+
+//     // GraphQL Mutation
+//     const query = `
+//       mutation cartGiftCardCodesAdd($cartId: ID!, $giftCardCodes: [String!]!) {
+//         cartGiftCardCodesAdd(cartId:$cartId, giftCardCodes:$giftCardCodes) {
+//           cart {
+//             id
+//             appliedGiftCards {
+//               lastCharacters
+//               amountUsed { amount currencyCode }
+//             }
+//             cost {
+//               totalAmount { amount currencyCode } 
+//             }
+//           }
+//           userErrors { field message }
+//         }
+//       }
+//     `;
+
+//     const variables = {
+//       cartId,
+//       giftCardCodes: [giftCardCode],
+//     };
+
+//     const response = await fetch(
+//       `https://${SHOP_DOMAIN}/api/2025-10/graphql.json`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "X-Shopify-Storefront-Access-Token": STOREFRONT_TOKEN,
+//         },
+//         body: JSON.stringify({
+//           query,
+//           variables,
+//         }),
+//       }
+//     );
+
+//     const data = await response.json();
+//       console.log("Response from backend:", data);
+
+
+//     console.log("🛒 Shopify Response:", JSON.stringify(data));
+
+//     return res.status(200).json({
+//       success: true,
+//       data,
+//     });
+
+//   } catch (error) {
+//     console.error("❌ Error in applyGiftCart:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error",
+//       error: error.message,
+//     });
+//   }
+// };
+
  
  
  

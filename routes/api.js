@@ -17,8 +17,25 @@ const { getWalletBalance } = require('../controllers/getBalanceController');
 const { loadWallet } = require('../controllers/loadWalletController.js');
 const { generateOtp } = require('../controllers/generateOtp.js');
 const { walletRedemption } = require('../controllers/getBalanceController.js');
+// const { applyGiftCart } = require('../controllers/getBalanceController.js');
+const { getAppliedGiftCards ,applyGiftCart} = require("../controllers/giftcard");
+
+
+// POST /api/payment/giftcard/create-giftcard → apply gift card
+router.post("/giftcard/create-giftcard", applyGiftCart);
+
+// GET /api/payment/giftcard/applied?cartId=... → fetch applied gift cards
+router.get("/giftcard/applied", getAppliedGiftCards);
+
+
 
 router.post('/get-balance', verifyToken, getWalletBalance);
+
+
+// // gift card 
+// router.post("/create", controller.createGiftCard);
+// router.get("/list", controller.getGiftCards);
+
 
 
 const {
@@ -128,6 +145,10 @@ router.post('/generateOtp', generateOtp);
 
 //Waller redemption
 router.post('/walletRedemption', walletRedemption);
+
+// App giftcard
+
+router.post('/applygiftcard', applyGiftCart);
 
 
 
