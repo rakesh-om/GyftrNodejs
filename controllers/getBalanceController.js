@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
+const {createGiftCard, applyGiftCart } = require('../controllers/giftcard');  
 
 // GyFTR credentials and API info (keep in env variables ideally)
 const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
@@ -86,7 +87,6 @@ exports.walletRedemption = async (req, res) => {
       return res.status(400).json({ message: "Userid/Password missing" });
     }
     
- 
     const body = req.body;
  
     if (!body.TID) body.TID = `TID${Date.now()}`;
@@ -124,6 +124,44 @@ exports.walletRedemption = async (req, res) => {
  
     const code = parsed.CODE;
     const message = parsed.MESSAGE ?? "";
+
+
+    if (code === "00") {
+  const giftAmount = parsed.AMOUNT;
+  const cartId = req.body.cartId;
+
+  if (!cartId) {
+    return res.status(400).json({
+      success: false,
+      message: "cartId is required to apply gift card"
+    });
+  }
+
+  const admin = req.shopifyAdmin;
+
+  const giftCard = await createGiftCard(
+    admin,
+    giftAmount,
+    `GyFTR wallet redemption - ${parsed.TXNID}`
+  );
+
+  // 2️⃣ Apply Gift Card to CART
+  const cart = await applyGiftCart({
+    cartId,
+    giftCardCode: giftCard.code
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Wallet redeemed & gift card applied to cart",
+    giftCard: {
+      code: giftCard.code,
+      amount: giftAmount
+    },
+    cart
+  });
+}
+
  
  
 return res.status(200).json({

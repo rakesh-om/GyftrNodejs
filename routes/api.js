@@ -12,10 +12,9 @@ const paymentController = require('../controllers/paymentController.js');
 const refundController = require('../controllers/refundController');
 const DeleteCoupon = require('../controllers/DeleteCoupon.js');
 const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
-const { getWalletBalance } = require('../controllers/getBalanceController');
+const { getWalletBalance,walletRedemption  } = require('../controllers/getBalanceController');
 const { loadWallet } = require('../controllers/loadWalletController.js');
 const { generateOtp } = require('../controllers/generateOtp.js');
-const { walletRedemption } = require('../controllers/getBalanceController.js');
 // const { applyGiftCart } = require('../controllers/getBalanceController.js');
 const { getAppliedGiftCards ,applyGiftCart} = require("../controllers/giftcard");
 
@@ -28,11 +27,9 @@ router.get("/giftcard/applied", getAppliedGiftCards);
 
 
 
-const { walletRedemption } = require('../controllers/walletRedemptionController');
 router.post('/get-balance', getWalletBalance);
 
 
-router.post('/wallet-redemption', walletRedemption);
 
 
 
