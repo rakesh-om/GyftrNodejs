@@ -12,7 +12,7 @@ const paymentController = require('../controllers/paymentController.js');
 const refundController = require('../controllers/refundController');
 const DeleteCoupon = require('../controllers/DeleteCoupon.js');
 const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
-const { getWalletBalance,walletRedemption  } = require('../controllers/getBalanceController');
+const { getWalletBalance,walletRedemption ,rechargeWallet } = require('../controllers/getBalanceController');
 const { loadWallet } = require('../controllers/loadWalletController.js');
 const { generateOtp } = require('../controllers/generateOtp.js');
 // const { applyGiftCart } = require('../controllers/getBalanceController.js');
@@ -36,6 +36,7 @@ router.post('/get-balance', getWalletBalance);
 // // gift card 
 // router.post("/create", controller.createGiftCard);
 // router.get("/list", controller.getGiftCards);
+
 
 
 
@@ -85,6 +86,8 @@ router.post('/initiate', validateShop, paymentController.initiatePayment);
 
 // Handle payment gateway callback/response
 router.post('/callback', express.urlencoded({ extended: false }), paymentController.handleCallback);
+
+
 
 
 // ==========================
@@ -150,6 +153,8 @@ router.post('/walletRedemption', walletRedemption);
 // App giftcard
 
 router.post('/applygiftcard', applyGiftCart);
+//Wallet Recharge
+router.post('/rechargeWallet', rechargeWallet);
 
 
 

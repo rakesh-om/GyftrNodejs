@@ -81,7 +81,7 @@ exports.walletRedemption = async (req, res) => {
  
     const {userid, password} = req.headers;
 
-     const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE} = req.body;
+     const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE} = req.body;
      
     if (!userid || !password) {
       return res.status(400).json({ message: "Userid/Password missing" });
@@ -101,11 +101,9 @@ exports.walletRedemption = async (req, res) => {
 
     const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE });
  
-    console.log("Plain Payload:", payload);
     const encryptedString = encrypt(payload , GYFTR_KEY, GYFTR_IV);
-    console.log("🔐 Encrypted Payload:", encryptedString);
  
-    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", { data: encryptedString }, {
+    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/walletRedemption", { data: encryptedString }, {
       headers: {
         "Userid": userid,
         "Password": password,
@@ -113,13 +111,16 @@ exports.walletRedemption = async (req, res) => {
       },
       // timeout: 20000
     });
- 
+
+
     const respData = response.data;
     if (!respData?.data) {
       return res.status(502).json({ message: "Invalid GyFTR response", respData });
     }
  
     const decrypted = decrypt(respData.data, GYFTR_KEY, GYFTR_IV);
+    console.log("🔓 Decrypted Response:", decrypted);
+    
     const parsed = JSON.parse(decrypted);
  
     const code = parsed.CODE;
@@ -181,89 +182,128 @@ return res.status(200).json({
 };
 
 
+exports.rechargeWallet = async (req, res) => {
+  try {
+    console.log("EPAY Recharge Body:", req.body);
 
+    const {
+      MOBILE,
+      MID,
+      TID,
+      PORDERID,
+      EREFNO,
+      VOUCHERNUMBER,
+      VOUCHERTYPE,
+      OTP,
+      SOURCE,
+    } = req.body;
 
-// exports.applyGiftCart = async (req, res) => {
-  
- 
-//   try {
-//     console.log("➡ Applying Gift Card...");
+    const { userid, password } = req.headers;
 
-//     const { cartId, giftCardCode } = req.body;
+    console.log("Userid:", userid);
+    console.log("Password:", password);
 
-//     if (!cartId || !giftCardCode) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "cartId and giftCardCode are required",
-//       });
-//     }
+    /* ================= HEADER VALIDATION ================= */
+    if (!userid || !password) {
+      return res.status(400).json({
+        error: "Missing required headers: userid, password",
+      });
+    }
 
-//     // Shopify Storefront Access Token
-//     const STOREFRONT_TOKEN = "32ef2e8324437b946d64b55405ae55ce";
+    /* ================= BODY VALIDATION ================= */
+    if (!MOBILE || !MID || !TID || !PORDERID || !VOUCHERNUMBER || !VOUCHERTYPE || !SOURCE) {
+      return res.status(400).json({
+        error:
+          "Missing required fields: MOBILE, MID, TID, PORDERID, VOUCHERNUMBER, VOUCHERTYPE, SOURCE",
+      });
+    }
 
-//     // Shopify Store Domain
-//     const SHOP_DOMAIN = "gyft-staging.myshopify.com";
+    // OTP mandatory only for P / E voucher types
+    if ((VOUCHERTYPE === "P" || VOUCHERTYPE === "E") && !OTP) {
+      return res.status(400).json({
+        error: "OTP is required for voucher type P or E",
+      });
+    }
 
-//     // GraphQL Mutation
-//     const query = `
-//       mutation cartGiftCardCodesAdd($cartId: ID!, $giftCardCodes: [String!]!) {
-//         cartGiftCardCodesAdd(cartId:$cartId, giftCardCodes:$giftCardCodes) {
-//           cart {
-//             id
-//             appliedGiftCards {
-//               lastCharacters
-//               amountUsed { amount currencyCode }
-//             }
-//             cost {
-//               totalAmount { amount currencyCode } 
-//             }
-//           }
-//           userErrors { field message }
-//         }
-//       }
-//     `;
+    /* ================= PAYLOAD ================= */
+    const payload = {
+      MOBILE,
+      MID,
+      TID,
+      PORDERID,
+      VOUCHERNUMBER,
+      VOUCHERTYPE,
+      SOURCE,
+    };
+    
 
-//     const variables = {
-//       cartId,
-//       giftCardCodes: [giftCardCode],
-//     };
+    if (EREFNO) payload.EREFNO = EREFNO;
+    if (OTP) payload.OTP = OTP;
 
-//     const response = await fetch(
-//       `https://${SHOP_DOMAIN}/api/2025-10/graphql.json`,
-//       {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           "X-Shopify-Storefront-Access-Token": STOREFRONT_TOKEN,
-//         },
-//         body: JSON.stringify({
-//           query,
-//           variables,
-//         }),
-//       }
-//     );
+    console.log("Plain Payload:", payload);
 
-//     const data = await response.json();
-//       console.log("Response from backend:", data);
+    /* ================= ENCRYPT ================= */
+    const encryptedPayload = {
+      data: encrypt(JSON.stringify(payload), GYFTR_KEY, GYFTR_IV),
+    };
 
+    console.log("Encrypted Payload:", encryptedPayload);
 
-//     console.log("🛒 Shopify Response:", JSON.stringify(data));
+    /* ================= API CALL ================= */
+    const gyfterResponse = await axios.post(
+      "https://brandpts.gyftr.net/api/merchant-services/rechargeWallet",
+      encryptedPayload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          userid,
+          password,
+        },
+      }
+    );
 
-//     return res.status(200).json({
-//       success: true,
-//       data,
-//     });
+    console.log("Raw GyFTR Response:", gyfterResponse.data);
 
-//   } catch (error) {
-//     console.error("❌ Error in applyGiftCart:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal Server Error",
-//       error: error.message,
-//     });
-//   }
-// };
+    if (!gyfterResponse.data || !gyfterResponse.data.data) {
+      return res.status(500).json({
+        error: "Invalid encrypted response from GyFTR",
+      });
+    }
 
+    /* ================= DECRYPT ================= */
+    const decryptedText = decrypt(
+      gyfterResponse.data.data,
+      GYFTR_KEY,
+      GYFTR_IV
+    );
+
+    console.log("Decrypted Response:", decryptedText);
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(decryptedText);
+    } catch (err) {
+      console.error("JSON Parse Error:", err);
+      return res.status(500).json({
+        error: "Failed to parse decrypted GyFTR response",
+      });
+    }
+
+    /* ================= FINAL RESPONSE ================= */
+    return res.json({
+      code: parsedResponse.CODE,
+      message: parsedResponse.MESSAGE,
+      data: parsedResponse,
+    });
+  } catch (err) {
+    console.error("EPAY Recharge Error:", err.message);
+
+    return res.status(500).json({
+      error: "Failed to recharge wallet",
+      details: err.message,
+    });
+  }
+};
  
  
  

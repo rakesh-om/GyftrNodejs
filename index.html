@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3rd Party App Test</title>
+
+  <!-- Include CryptoJS from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+  <h1>Third Party Approval Page</h1>
+
+  <p>Click "Approve" to send data back to your app:</p>
+
+  <button id="approveBtn">Approve</button>
+
+  <script>
+    const approveBtn = document.getElementById("approveBtn");
+
+
+
+    approveBtn.addEventListener("click", () => {
+      const data = {
+        mid: "GYTORGSHPLG.WTPG.5625",
+        accessToken: "shpua_6a4a11ef35fc9fab7321a2b2813c9312",
+        shop: "test-store.myshopify.com",
+        brand_name: "Gyfter",
+        hash_salt: "hashSalt",
+        password: "pass123",
+        reverse_salt: "revSalt",
+        shopid: "123456",
+        userId: "dde2d2dc-aa7b-45e5-8b48-7468251e29ab",
+        user_name: "SamOm",
+      };
+
+      // Encrypt the data
+      const key = "7TloC0pRacfxOA2rlXURmFLYCLl7wdPj"; // 32 bytes
+      const iv = "5819061549973285"; // 16 bytes
+      const jsonString = JSON.stringify(data);
+
+      // Use CryptoJS AES-256-CBC
+      const encrypted = CryptoJS.AES.encrypt(jsonString, CryptoJS.enc.Utf8.parse(key), {
+        iv: CryptoJS.enc.Utf8.parse(iv),
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7,
+      }).toString();
+
+      // Redirect to your app with encrypted payload
+          window.location.href = `https://admin.shopify.com/store/test-store-samir11/apps/pay-by-gyfter-1/app?encryptedData=${encodeURIComponent(encrypted)}`;
+
+    });
+  </script>
+</body>
+</html>
