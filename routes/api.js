@@ -16,7 +16,8 @@ const UpdateAttribute =  require('../controllers/UpdateAttribute.js');
 const { getWalletBalance } = require('../controllers/getBalanceController');
 const { loadWallet } = require('../controllers/loadWalletController.js');
 const { generateOtp } = require('../controllers/generateOtp.js');
-const { walletRedemption } = require('../controllers/getBalanceController.js');
+const { walletRedemption, rechargeWallet} = require('../controllers/getBalanceController.js');
+
 
 router.post('/get-balance', verifyToken, getWalletBalance);
 
@@ -67,6 +68,8 @@ router.post('/initiate', validateShop, paymentController.initiatePayment);
 
 // Handle payment gateway callback/response
 router.post('/callback', express.urlencoded({ extended: false }), paymentController.handleCallback);
+
+
 
 
 // ==========================
@@ -128,6 +131,9 @@ router.post('/generateOtp', generateOtp);
 
 //Waller redemption
 router.post('/walletRedemption', walletRedemption);
+
+//Wallet Recharge
+router.post('/rechargeWallet', rechargeWallet);
 
 
 

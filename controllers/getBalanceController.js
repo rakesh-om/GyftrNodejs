@@ -85,7 +85,7 @@ exports.walletRedemption = async (req, res) => {
  
     const {userid, password} = req.headers;
 
-     const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE} = req.body;
+     const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE} = req.body;
      
     if (!userid || !password) {
       return res.status(400).json({ message: "Userid/Password missing" });
@@ -111,11 +111,9 @@ exports.walletRedemption = async (req, res) => {
  
     const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE });
  
-    console.log("Plain Payload:", payload);
     const encryptedString = encrypt(payload , GYFTR_KEY, GYFTR_IV);
-    console.log("🔐 Encrypted Payload:", encryptedString);
  
-    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", { data: encryptedString }, {
+    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/walletRedemption", { data: encryptedString }, {
       headers: {
         "Userid": userid,
         "Password": password,
@@ -123,13 +121,16 @@ exports.walletRedemption = async (req, res) => {
       },
       // timeout: 20000
     });
- 
+
+
     const respData = response.data;
     if (!respData?.data) {
       return res.status(502).json({ message: "Invalid GyFTR response", respData });
     }
  
     const decrypted = decrypt(respData.data, GYFTR_KEY, GYFTR_IV);
+    console.log("🔓 Decrypted Response:", decrypted);
+    
     const parsed = JSON.parse(decrypted);
  
     const code = parsed.CODE;
@@ -171,6 +172,130 @@ return res.status(200).json({
       success: false,
       message: "Server error",
       error: err.response?.data || err.message
+    });
+  }
+};
+
+
+exports.rechargeWallet = async (req, res) => {
+  try {
+    console.log("EPAY Recharge Body:", req.body);
+
+    const {
+      MOBILE,
+      MID,
+      TID,
+      PORDERID,
+      EREFNO,
+      VOUCHERNUMBER,
+      VOUCHERTYPE,
+      OTP,
+      SOURCE,
+    } = req.body;
+
+    const { userid, password } = req.headers;
+
+    console.log("Userid:", userid);
+    console.log("Password:", password);
+
+    /* ================= HEADER VALIDATION ================= */
+    if (!userid || !password) {
+      return res.status(400).json({
+        error: "Missing required headers: userid, password",
+      });
+    }
+
+    /* ================= BODY VALIDATION ================= */
+    if (!MOBILE || !MID || !TID || !PORDERID || !VOUCHERNUMBER || !VOUCHERTYPE || !SOURCE) {
+      return res.status(400).json({
+        error:
+          "Missing required fields: MOBILE, MID, TID, PORDERID, VOUCHERNUMBER, VOUCHERTYPE, SOURCE",
+      });
+    }
+
+    // OTP mandatory only for P / E voucher types
+    if ((VOUCHERTYPE === "P" || VOUCHERTYPE === "E") && !OTP) {
+      return res.status(400).json({
+        error: "OTP is required for voucher type P or E",
+      });
+    }
+
+    /* ================= PAYLOAD ================= */
+    const payload = {
+      MOBILE,
+      MID,
+      TID,
+      PORDERID,
+      VOUCHERNUMBER,
+      VOUCHERTYPE,
+      SOURCE,
+    };
+    
+
+    if (EREFNO) payload.EREFNO = EREFNO;
+    if (OTP) payload.OTP = OTP;
+
+    console.log("Plain Payload:", payload);
+
+    /* ================= ENCRYPT ================= */
+    const encryptedPayload = {
+      data: encrypt(JSON.stringify(payload), GYFTR_KEY, GYFTR_IV),
+    };
+
+    console.log("Encrypted Payload:", encryptedPayload);
+
+    /* ================= API CALL ================= */
+    const gyfterResponse = await axios.post(
+      "https://brandpts.gyftr.net/api/merchant-services/rechargeWallet",
+      encryptedPayload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          userid,
+          password,
+        },
+      }
+    );
+
+    console.log("Raw GyFTR Response:", gyfterResponse.data);
+
+    if (!gyfterResponse.data || !gyfterResponse.data.data) {
+      return res.status(500).json({
+        error: "Invalid encrypted response from GyFTR",
+      });
+    }
+
+    /* ================= DECRYPT ================= */
+    const decryptedText = decrypt(
+      gyfterResponse.data.data,
+      GYFTR_KEY,
+      GYFTR_IV
+    );
+
+    console.log("Decrypted Response:", decryptedText);
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(decryptedText);
+    } catch (err) {
+      console.error("JSON Parse Error:", err);
+      return res.status(500).json({
+        error: "Failed to parse decrypted GyFTR response",
+      });
+    }
+
+    /* ================= FINAL RESPONSE ================= */
+    return res.json({
+      code: parsedResponse.CODE,
+      message: parsedResponse.MESSAGE,
+      data: parsedResponse,
+    });
+  } catch (err) {
+    console.error("EPAY Recharge Error:", err.message);
+
+    return res.status(500).json({
+      error: "Failed to recharge wallet",
+      details: err.message,
     });
   }
 };

@@ -7,6 +7,7 @@ const GYFTR_IV = process.env.GYFTR_IV || "9660064408704604"; // 16-byte
 exports.loadWallet = async (req, res) => {
   try {
     const { MOBILE, MID, TID, OTP, SOURCE } = req.body;
+    console.log("Body:", req.body);
     const { userid, password } = req.headers;
     console.log("Userid", userid);
     console.log("Password", password);
@@ -32,6 +33,8 @@ exports.loadWallet = async (req, res) => {
       OTP,
       SOURCE,
     });
+
+    console.log("Payload:", payload);
 
     // Encrypt
     const encryptedPayload = {
