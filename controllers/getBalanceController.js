@@ -4,6 +4,10 @@ const { encrypt, decrypt } = require('../utils/gyftrCrypto');
 const { Balance } = require('../models/Balance');
 const Setting = require('../models/Setting');
 const { generatePORDERID } = require('../helpers/generatePorderId');
+const {callGyftrWallet} = require("../helpers/gyfterWalletRedeem");
+const {createGiftCard} = require("../helpers/createGiftCard");
+const {applyGiftCardToCart} = require("../helpers/applyGiftCart");
+
 
 const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
@@ -101,96 +105,127 @@ exports.getWalletBalance = async (req, res) => {
 
 
 
-function validateRequest(body) {
-  const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'SOURCE', 'BILLNO', 'BILLVALUE'];
-  const missing = required.filter(k => !body[k] || String(body[k]).trim() === '');
-  return { ok: missing.length === 0, missing };
-}
- 
 
- 
+
+
+
 exports.walletRedemption = async (req, res) => {
   try {
-    console.log(" /wallet-redemption request received");
- 
-    const {userid, password} = req.headers;
+    const { MOBILE, AMOUNT, SHOP, SHOPID, CARTID } = req.body;
 
-     const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE} = req.body;
+    console.log("Request Body:", req.body);
 
-
-     
-    if (!userid || !password) {
-      return res.status(400).json({ message: "Userid/Password missing" });
+    // Validate required parameters
+    if (!MOBILE || !AMOUNT || !SHOP || !SHOPID || !CARTID) {
+      return res.status(400).json({ 
+        message: "mobile, amount, shop, shopId and cartId are required" 
+      });
     }
-    
- 
-    const body = req.body;
- 
-    if (!body.TID) body.TID = `TID${Date.now()}`;
-    if (!body.EREFNO) body.EREFNO = Date.now().toString();
- 
-    const { ok, missing } = validateRequest(body);
-    if (!ok) return res.status(400).json({ message: "Missing required params", missing });
- 
-console.log("Validated Body:", body);
 
-    const amt = parseFloat(body.AMOUNT);
-    if (isNaN(amt)) return res.status(400).json({ message: "Invalid amount" });
-    body.AMOUNT = amt.toFixed(2);
- 
-    // const isUnique = await isOrderUnique(body.PORDERID);
-    // if (!isUnique) {
-    //   return res.status(409).json({ message: "Duplicate PORDERID exists. Redemption not allowed." });
-    // }
- 
-    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE });
- console.log("🔐 Payload:", payload);
-    const encryptedString = encrypt(payload , GYFTR_KEY, GYFTR_IV);
- console.log("🔐 Encrypted Payload:", encryptedString);
-    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/walletRedemption", { data: encryptedString }, {
-      headers: {
-        "Userid": userid,
-        "Password": password,
-        "Content-Type": "application/json"
-      },
-      // timeout: 20000
+    // Fetch settings from database
+    const setting = await Setting.findOne({
+      where: {
+        shop: SHOP,
+        // shopid: SHOPID
+      }
     });
 
-    console.log("🔐 Encrypted Response:", response.data);
-
-    const respData = response.data;
-    if (!respData?.data) {
-      return res.status(502).json({ message: "Invalid GyFTR response", respData });
+    if (!setting) {
+      return res.status(404).json({ error: "Shop settings not found" });
     }
- 
-    const decrypted = decrypt(respData.data, GYFTR_KEY, GYFTR_IV);
-    console.log("🔓 Decrypted Response:", decrypted);
-    
-    const parsed = JSON.parse(decrypted);
- 
-    const code = parsed.CODE;
-    const message = parsed.MESSAGE ?? "";
 
-    
- 
-    
+    console.log("Setting found:", setting.shop);
 
- 
-return res.status(200).json({
-      success: code === "00",
-      code,
-      message,
-      data: parsed
-    }); 
+    const adminToken = setting.accessToken;
+
+    // Extract credentials from setting
+    const MID = setting.mid;
+    const TID = `${setting.brand_name}-${setting.shopid}`;
+    const EREFNO = Date.now().toString();
+    const PORDERID = generatePORDERID();
+
+    // Static values
+    const SOURCE = "W";
+    const BILLNO = "test1";
+    const BILLVALUE = "3";
+
+    console.log("Using MID:", MID);
+    console.log("Using TID:", TID);
+    console.log("Using PORDERID:", PORDERID);
+
+    // Gyftr credentials for helper function
+    const gyftrCreds = {
+      userid: setting.userId,
+      password: setting.password,
+      key: setting.enc_dec_api_key,
+      iv: setting.enc_dec_api_iv_key,
+    };
+
+    // Prepare body for callGyftrWallet
+    const gyftrBody = {
+      MOBILE: MOBILE,
+      MID: MID,
+      TID: TID,
+      EREFNO: EREFNO,
+      PORDERID: PORDERID,
+      AMOUNT: AMOUNT,
+      SOURCE: SOURCE,
+      BILLNO: BILLNO,
+      BILLVALUE: BILLVALUE,
+    };
+
+    console.log("Calling Gyftr Wallet with body:", gyftrBody);
+
+    // 🔥 1️⃣ Call Gyftr Wallet
+    const parsed = await callGyftrWallet(gyftrCreds, gyftrBody);
+    
+    console.log("Gyftr Response:", parsed);
+
+    if (parsed.CODE !== "00") {
+      return res.status(400).json({
+        success: false,
+        message: parsed.MESSAGE,
+      });
+    }
+
+    // 🔥 2️⃣ Create Shopify Gift Card
+    const giftCard = await createGiftCard(
+      SHOP,
+      adminToken,
+      parsed.AMOUNT,
+      parsed.TXNID
+    );
+
+    console.log("Gift Card Created:", giftCard);
+
+    // 🔥 3️⃣ Apply Gift Card to Cart
+    const cartData = await applyGiftCardToCart(
+      SHOP,
+      adminToken,
+      CARTID,
+         parsed.TXNID
+    );
+
+    console.log("Cart Updated:", cartData);
+
+    return res.json({
+      success: true,
+      giftCard: {
+        code: giftCard.maskedCode,
+        amount: giftCard.initialValue.amount,
+      },
+      cartData,
+    });
   } catch (err) {
-    console.error("❌ walletRedemption error:", err.response?.data || err.message);
-    return res.status(500).json({
+    console.error("walletRedeem error:", err);
+    res.status(500).json({
       success: false,
-      message: "Server error",
-      error: err.response?.data || err.message
+      message: err.message,
     });
   }
 };
+
+ 
 
 
 exports.rechargeWallet = async (req, res) => {

@@ -1,32 +1,42 @@
-const fetch = require("node-fetch");
+const axios = require("axios");
 
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
-const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN;
+exports.createGiftCard = async (shop, adminToken, amount, code) => {
+  const query = `
+    mutation giftCardCreate($input: GiftCardCreateInput!) {
+      giftCardCreate(input: $input) {
+        giftCard {
+          id
+          maskedCode
+          initialValue { amount }
+        }
+        userErrors { message }
+      }
+    }
+  `;
 
-if (!SHOP_DOMAIN || !ADMIN_API_TOKEN) {
-  throw new Error("Shopify Admin config missing");
-}
+  const variables = {
+    input: {
+      initialValue: parseFloat(amount),
+      code,
+    },
+  };
 
-async function shopifyAdminGraphql(query, variables = {}) {
-  const response = await fetch(
-    `https://${SHOP_DOMAIN}/admin/api/2024-10/graphql.json`,
+  const res = await axios.post(
+    `https://${shop}/admin/api/2025-10/graphql.json`,
+    { query, variables },
     {
-      method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ADMIN_API_TOKEN
+        "X-Shopify-Access-Token": adminToken,
       },
-      body: JSON.stringify({ query, variables })
     }
   );
 
-  const result = await response.json();
+  const result = res.data.data.giftCardCreate;
 
-  if (result.errors) {
-    throw new Error(result.errors[0].message);
+  if (result.userErrors?.length) {
+    throw new Error(result.userErrors[0].message);
   }
 
-  return result.data;
-}
-
-module.exports = { shopifyAdminGraphql };
+  return result.giftCard;
+};

@@ -12,6 +12,7 @@ exports.loadWallet = async (req, res) => {
     console.log("Userid", userid);
     console.log("Password", password);
 
+    
     if (!userid || !password) {
       return res
         .status(400)
