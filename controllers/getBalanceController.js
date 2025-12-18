@@ -2,6 +2,7 @@
 const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
 const { Balance } = require('../models/Balance');
+const Setting = require('../models/Setting');
 
 const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
@@ -10,6 +11,92 @@ const GYFTR_KEY = process.env.GYFTR_KEY || 'mvPjj93b78BOuupjmETBBY6yrQGhbizC'; /
 const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; // 16-byte
 console.log('GYFTR_KEY:', GYFTR_KEY);
 console.log('GYFTR_IV:', GYFTR_IV);
+
+
+// exports.getWalletBalance = async (req, res) => {
+//   try {
+//     const { shop, shopId, mobile } = req.body;
+    
+//     console.log("Request Body:", req.body);
+
+//     // Validate required parameters 
+//     if (!shop || !shopId || !mobile) {
+//       return res.status(400).json({ error: 'shop, shopId and mobile are required' });
+//     }
+
+
+//     // Fetch settings from database
+//     const setting = await Setting.findOne({
+//       where: {
+//         shop: shop,
+//         shopid: shopId
+//       }
+//     });
+
+//     console.log("Fetched Setting:", setting);
+
+
+
+//     if (!setting) {
+//       return res.status(404).json({ error: 'Shop settings not found' });
+//     }
+
+//     console.log("Setting found:", setting.shop);
+//      const updateTid = `${setting.brand_name}-${setting.shopid}`;
+
+//     // Extract credentials from setting
+//     const MID = setting.mid;
+//     const TID = updateTid; // Use updateTid instead of generating a new one
+//     const EREFNO = Date.now().toString(); // Generate unique EREFNO
+//     const userid = setting.userId;
+//     const password = setting.password;
+//     // const GYFTR_KEY = setting.enc_dec_api_key;
+//     // const GYFTR_IV = setting.enc_dec_api_iv_key;
+
+//     console.log("Using MID:", MID);
+//     console.log("Using TID:", TID);
+//     console.log("Using Userid:", userid);
+
+//     // Create payload and encrypt
+//     const payload = JSON.stringify({ MOBILE: mobile, MID, TID, EREFNO });
+//     console.log('Payload:', payload);
+//     const encryptedPayload = { data: encrypt(payload, GYFTR_KEY, GYFTR_IV) };
+//     console.log('Encrypted Payload:', encryptedPayload);
+
+//     // Call GyFTR API
+//     const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", encryptedPayload, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'userid': userid,
+//         'password': password
+//       }
+//     });
+
+//     // Decrypt GyFTR response
+//     const decryptedData = decrypt(response.data.data, GYFTR_KEY, GYFTR_IV);
+//     console.log('Decrypted Data:', decryptedData);
+//     const parsed = JSON.parse(decryptedData);
+
+//     console.log('Parsed Response:', parsed);
+
+//     const balance = parsed.BALANCE;
+//     console.log('Wallet Balance:', balance);
+
+//     // Save balance in database with userId
+//     await Balance.upsert({ userId: userid, balance: balance });
+
+//     // Send response to frontend
+//     return res.json({
+//       code: parsed.CODE,
+//       message: parsed.MESSAGE,
+//       balance: parsed.BALANCE
+//     });
+
+//   } catch (err) {
+//     console.error('Get Wallet Balance Error:', err.message);
+//     return res.status(500).json({ error: 'Failed to fetch wallet balance' });
+//   }
+// };
 
 
 exports.getWalletBalance = async (req, res) => {
@@ -65,7 +152,6 @@ exports.getWalletBalance = async (req, res) => {
     return res.status(500).json({ error: 'Failed to fetch wallet balance' });
   }
 };
-
 
 function validateRequest(body) {
   const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'SOURCE', 'BILLNO', 'BILLVALUE'];
