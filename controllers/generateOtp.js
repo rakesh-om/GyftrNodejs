@@ -1,39 +1,56 @@
 const axios = require("axios");
 const { encrypt, decrypt } = require("../utils/gyftrCrypto");
+const Setting = require("../models/Setting");
 
 const GYFTR_KEY = process.env.GYFTR_KEY;
 const GYFTR_IV = process.env.GYFTR_IV;
 
 exports.generateOtp = async (req, res) => {
   try {
-    const { MOBILE, MID, TID, EREFNO } = req.body;
-    const userid = req.headers.userid;
-    const password = req.headers.password;
+    const { MOBILE, SHOP, SHOPID } = req.body;
+    
+    console.log("Request Body:", req.body);
 
-    console.log("Userid:", userid);
-    console.log("Password:", password);
-
-    // Validate required headers
-    if (!userid || !password) {
+    // Validate required parameters
+    if (!MOBILE || !SHOP || !SHOPID) {
       return res.status(400).json({
-        error: "Missing required headers: userid, password"
+        error: "mobile, shop and shopId are required"
       });
     }
 
-    // Validate body parameters
-    if (!MOBILE || !MID || !TID) {
-      return res.status(400).json({
-        error: "Missing required fields: MOBILE, MID, TID"
-      });
+    // Fetch settings from database
+    const setting = await Setting.findOne({
+      where: {
+        shop: SHOP,
+        // shopid: SHOPID
+      }
+    });
+
+    if (!setting) {
+      return res.status(404).json({ error: "Shop settings not found" });
     }
 
+    console.log("Setting found:", setting.shop);
+
+    // Extract credentials from setting
+    const MID = setting.mid;
+    const TID = `${setting.brand_name}-${setting.shopid}`;
+    const EREFNO = Date.now().toString(); // Generate unique EREFNO
+    const userid = setting.userId;
+    const password = setting.password;
+    const GYFTR_KEY = setting.enc_dec_api_key;
+    const GYFTR_IV = setting.enc_dec_api_iv_key;
+
+    console.log("Using MID:", MID);
+    console.log("Using TID:", TID);
+    console.log("Using Userid:", userid);
 
     // Create payload
     const payload = JSON.stringify({
-      MOBILE,
+      MOBILE: MOBILE,
       MID,
       TID,
-      EREFNO: EREFNO || ""
+      EREFNO
     });
 
     console.log("Plain Payload:", payload);
@@ -51,9 +68,9 @@ exports.generateOtp = async (req, res) => {
       encryptedPayload,
       {
         headers: {
-         'Content-Type': 'application/json',
-        'userid':  userid,
-        'password':   password
+          'Content-Type': 'application/json',
+          'userid': userid,
+          'password': password
         }
       }
     );
@@ -65,13 +82,9 @@ exports.generateOtp = async (req, res) => {
         error: "Invalid encrypted response from GyFTR"
       });
     }
-    
 
     // Decrypt response
     const decrypted = decrypt(response.data.data, GYFTR_KEY, GYFTR_IV);
-    console.log("GYFTR_KEY:", GYFTR_KEY);
-    console.log("GYFTR_IV:", GYFTR_IV);
-
     console.log("Decrypted Response:", decrypted);
 
     let parsed;
@@ -83,6 +96,8 @@ exports.generateOtp = async (req, res) => {
         error: "Failed to parse decrypted GyFTR response"
       });
     }
+
+    console.log("Parsed Response:", parsed);
 
     // Return final response
     return res.json({

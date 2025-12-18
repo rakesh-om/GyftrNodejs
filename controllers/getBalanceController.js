@@ -3,6 +3,7 @@ const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
 const { Balance } = require('../models/Balance');
 const Setting = require('../models/Setting');
+const { generatePORDERID } = require('../helpers/generatePorderId');
 
 const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
@@ -13,118 +14,62 @@ console.log('GYFTR_KEY:', GYFTR_KEY);
 console.log('GYFTR_IV:', GYFTR_IV);
 
 
-// exports.getWalletBalance = async (req, res) => {
-//   try {
-//     const { shop, shopId, mobile } = req.body;
-    
-//     console.log("Request Body:", req.body);
-
-//     // Validate required parameters 
-//     if (!shop || !shopId || !mobile) {
-//       return res.status(400).json({ error: 'shop, shopId and mobile are required' });
-//     }
-
-
-//     // Fetch settings from database
-//     const setting = await Setting.findOne({
-//       where: {
-//         shop: shop,
-//         shopid: shopId
-//       }
-//     });
-
-//     console.log("Fetched Setting:", setting);
-
-
-
-//     if (!setting) {
-//       return res.status(404).json({ error: 'Shop settings not found' });
-//     }
-
-//     console.log("Setting found:", setting.shop);
-//      const updateTid = `${setting.brand_name}-${setting.shopid}`;
-
-//     // Extract credentials from setting
-//     const MID = setting.mid;
-//     const TID = updateTid; // Use updateTid instead of generating a new one
-//     const EREFNO = Date.now().toString(); // Generate unique EREFNO
-//     const userid = setting.userId;
-//     const password = setting.password;
-//     // const GYFTR_KEY = setting.enc_dec_api_key;
-//     // const GYFTR_IV = setting.enc_dec_api_iv_key;
-
-//     console.log("Using MID:", MID);
-//     console.log("Using TID:", TID);
-//     console.log("Using Userid:", userid);
-
-//     // Create payload and encrypt
-//     const payload = JSON.stringify({ MOBILE: mobile, MID, TID, EREFNO });
-//     console.log('Payload:', payload);
-//     const encryptedPayload = { data: encrypt(payload, GYFTR_KEY, GYFTR_IV) };
-//     console.log('Encrypted Payload:', encryptedPayload);
-
-//     // Call GyFTR API
-//     const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", encryptedPayload, {
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'userid': userid,
-//         'password': password
-//       }
-//     });
-
-//     // Decrypt GyFTR response
-//     const decryptedData = decrypt(response.data.data, GYFTR_KEY, GYFTR_IV);
-//     console.log('Decrypted Data:', decryptedData);
-//     const parsed = JSON.parse(decryptedData);
-
-//     console.log('Parsed Response:', parsed);
-
-//     const balance = parsed.BALANCE;
-//     console.log('Wallet Balance:', balance);
-
-//     // Save balance in database with userId
-//     await Balance.upsert({ userId: userid, balance: balance });
-
-//     // Send response to frontend
-//     return res.json({
-//       code: parsed.CODE,
-//       message: parsed.MESSAGE,
-//       balance: parsed.BALANCE
-//     });
-
-//   } catch (err) {
-//     console.error('Get Wallet Balance Error:', err.message);
-//     return res.status(500).json({ error: 'Failed to fetch wallet balance' });
-//   }
-// };
-
-
 exports.getWalletBalance = async (req, res) => {
   try {
-    const { MOBILE, MID, TID, EREFNO } = req.body;
-    const {userid, password} = req.headers;
-    console.log("Userid",userid)
-    console.log("Password",password)
+    const { SHOP, SHOPID, MOBILE } = req.body;
+    
+    console.log("Request Body:", req.body);
 
     // Validate required parameters 
-
-    if (!MOBILE || !MID || !TID) {
-      return res.status(400).json({ error: 'MOBILE, MID and TID are required' });
+    if (!SHOP || !SHOPID || !MOBILE) {
+      return res.status(400).json({ error: 'SHOP, SHOPID and MOBILE are required' });
     }
 
+
+    // Fetch settings from database
+    const setting = await Setting.findOne({
+      where: {
+        shop: SHOP,
+        // shopid: shopId
+      }
+    });
+
+    console.log("Fetched Setting:", setting);
+
+
+
+    if (!setting) {
+      return res.status(404).json({ error: 'Shop settings not found' });
+    }
+
+    console.log("Setting found:", setting.shop);
+     const updateTid = `${setting.brand_name}-${setting.shopid}`;
+
+    // Extract credentials from setting
+    const MID = setting.mid;
+    const TID = updateTid; // Use updateTid instead of generating a new one
+    const EREFNO = Date.now().toString(); // Generate unique EREFNO
+    const userid = setting.userId;
+    const password = setting.password;
+    const GYFTR_KEY = setting.enc_dec_api_key;
+    const GYFTR_IV = setting.enc_dec_api_iv_key;
+
+    console.log("Using MID:", MID);
+    console.log("Using TID:", TID);
+    console.log("Using Userid:", userid);
+
     // Create payload and encrypt
-    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO });
+    const payload = JSON.stringify({ MOBILE: MOBILE, MID, TID, EREFNO });
     console.log('Payload:', payload);
-    const encryptedPayload = { data: encrypt(payload , GYFTR_KEY, GYFTR_IV)  };
-  console.log('Encrypted Payload:', encryptedPayload);
-  
+    const encryptedPayload = { data: encrypt(payload, GYFTR_KEY, GYFTR_IV) };
+    console.log('Encrypted Payload:', encryptedPayload);
 
     // Call GyFTR API
     const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", encryptedPayload, {
       headers: {
         'Content-Type': 'application/json',
-        'userid':userid,
-        'password':password
+        'userid': userid,
+        'password': password
       }
     });
 
@@ -138,7 +83,8 @@ exports.getWalletBalance = async (req, res) => {
     const balance = parsed.BALANCE;
     console.log('Wallet Balance:', balance);
 
-   await Balance.upsert({ userId: userid, balance: balance });
+    // Save balance in database with userId
+    await Balance.upsert({ userId: userid, balance: balance });
 
     // Send response to frontend
     return res.json({
@@ -153,17 +99,15 @@ exports.getWalletBalance = async (req, res) => {
   }
 };
 
+
+
 function validateRequest(body) {
   const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'SOURCE', 'BILLNO', 'BILLVALUE'];
   const missing = required.filter(k => !body[k] || String(body[k]).trim() === '');
   return { ok: missing.length === 0, missing };
 }
  
-// DB duplicate check
-// async function isOrderUnique(PORDERID) {
-//   const exists = await GyftrRedemptions.findOne({ where: { requestid: PORDERID } });
-//   return !exists;
-// }
+
  
 exports.walletRedemption = async (req, res) => {
   try {
@@ -251,76 +195,64 @@ return res.status(200).json({
 
 exports.rechargeWallet = async (req, res) => {
   try {
-    console.log("EPAY Recharge Body:", req.body);
-
-    const {
-      MOBILE,
-      MID,
-      TID,
-      PORDERID,
-      EREFNO,
-      VOUCHERNUMBER,
-      VOUCHERTYPE,
-      OTP,
-      SOURCE,
-    } = req.body;
-
+    const { MOBILE, SHOP, SHOPID, VOUCHERNUMBER } = req.body;
 
     console.log("Request Body:", req.body);
-    const { userid, password } = req.headers;
 
-    console.log("Userid:", userid);
-    console.log("Password:", password);
-
-    /* ================= HEADER VALIDATION ================= */
-    if (!userid || !password) {
+    // Validate required parameters
+    if (!MOBILE || !SHOP || !SHOPID || !VOUCHERNUMBER) {
       return res.status(400).json({
-        error: "Missing required headers: userid, password",
+        error: "mobile, shop, shopId and voucherNumber are required",
       });
     }
 
+    // Fetch settings from database
+    const setting = await Setting.findOne({
+      where: {
+        shop: SHOP,
+        // shopid: SHOPID
+      }
+    });
 
-
-    /* ================= BODY VALIDATION ================= */
-    if (!MOBILE || !MID || !TID || !PORDERID || !VOUCHERNUMBER || !VOUCHERTYPE || !SOURCE) {
-      return res.status(400).json({
-        error:
-          "Missing required fields: MOBILE, MID, TID, PORDERID, VOUCHERNUMBER, VOUCHERTYPE, SOURCE",
-      });
+    if (!setting) {
+      return res.status(404).json({ error: "Shop settings not found" });
     }
 
- 
+    console.log("Setting found:", setting.shop);
 
-    // OTP mandatory only for P / E voucher types
-    // if ((VOUCHERTYPE === "P" || VOUCHERTYPE === "E") && !OTP) {
-    //   return res.status(400).json({
-    //     error: "OTP is required for voucher type P or E",
-    //   });
-    // }
+    // Extract credentials from setting
+    const MID = setting.mid;
+    const TID = `${setting.brand_name}-${setting.shopid}`;
+    const PORDERID = generatePORDERID(); // Generate unique PORDERID
+    const EREFNO = Date.now().toString(); // Generate unique EREFNO
+    const userid = setting.userId;
+    const password = setting.password;
+    const GYFTR_KEY = setting.enc_dec_api_key;
+    const GYFTR_IV = setting.enc_dec_api_iv_key;
 
-console.log("All required fields are present.");
+    // Static values
+    const VOUCHERTYPE = "E";
+    const SOURCE = "P";
+
+    console.log("Using MID:", MID);
+    console.log("Using TID:", TID);
+    console.log("Using PORDERID:", PORDERID);
+    console.log("Using Userid:", userid);
 
     /* ================= PAYLOAD ================= */
     const payload = {
-      MOBILE,
+      MOBILE: MOBILE,
       MID,
       TID,
       PORDERID,
-      VOUCHERNUMBER,
+      VOUCHERNUMBER: VOUCHERNUMBER,
       VOUCHERTYPE,
       SOURCE,
+      EREFNO
     };
-    
-
-
-
-    if (EREFNO) payload.EREFNO = EREFNO;
-    // if (OTP) payload.OTP = OTP;
 
     console.log("Plain Payload:", payload);
 
-
-    console.log("Plain Payload:", payload);
     /* ================= ENCRYPT ================= */
     const encryptedPayload = {
       data: encrypt(JSON.stringify(payload), GYFTR_KEY, GYFTR_IV),
@@ -368,6 +300,8 @@ console.log("All required fields are present.");
       });
     }
 
+    console.log("Parsed Response:", parsedResponse);
+
     /* ================= FINAL RESPONSE ================= */
     return res.json({
       code: parsedResponse.CODE,
@@ -375,7 +309,7 @@ console.log("All required fields are present.");
       data: parsedResponse,
     });
   } catch (err) {
-    console.error("EPAY Recharge Error:", err.message);
+    console.error("Recharge Wallet Error:", err.message);
 
     return res.status(500).json({
       error: "Failed to recharge wallet",
@@ -386,3 +320,122 @@ console.log("All required fields are present.");
  
  
  
+exports.loadWallet = async (req, res) => {
+  try {
+    const { SHOP, SHOPID, MOBILE, OTP } = req.body;
+    
+    console.log("Request Body:", req.body);
+
+    // Validate required parameters
+    if (!SHOP || !SHOPID || !MOBILE || !OTP) {
+      return res.status(400).json({ 
+        error: 'SHOP, SHOPID, MOBILE and OTP are required' 
+      });
+    }
+
+    // Fetch settings from database
+    const setting = await Setting.findOne({
+      where: {
+        shop: SHOP,
+        shopid: SHOPID
+      }
+    });
+
+    if (!setting) {
+      return res.status(404).json({ error: 'Shop settings not found' });
+    }
+
+    console.log("Setting found:", setting.shop);
+
+    // Extract credentials from setting
+    const MID = setting.mid;
+    const TID = `${setting.brand_name}-${setting.shopid}`;
+    const EREFNO = Date.now().toString(); // Generate unique EREFNO
+    const userid = setting.userId;
+    const password = setting.password;
+    const GYFTR_KEY = setting.enc_dec_api_key;
+    const GYFTR_IV = setting.enc_dec_api_iv_key;
+    const SOURCE = "P"; // Default source
+
+    console.log("Using MID:", MID);
+    console.log("Using TID:", TID);
+    console.log("Using Userid:", userid);
+
+    // Create payload and encrypt
+    const payload = JSON.stringify({
+      MOBILE: MOBILE,
+      MID,
+      TID,
+      OTP: OTP,
+      SOURCE,
+      EREFNO,
+      SOURCE
+    });
+
+    console.log("Payload:", payload);
+
+    // Encrypt
+    const encryptedPayload = {
+      data: encrypt(payload, GYFTR_KEY, GYFTR_IV),
+    };
+
+    console.log("Encrypted Payload:", encryptedPayload);
+
+    // API REQUEST
+    const gyfterResponse = await axios.post(
+      "https://brandpts.gyftr.net/api/merchant-services/loadWallet",
+      encryptedPayload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          userid: userid,
+          password: password,
+        },
+      }
+    );
+
+    console.log("Raw GyFTR Response:", gyfterResponse.data);
+
+    if (!gyfterResponse.data || !gyfterResponse.data.data) {
+      return res
+        .status(500)
+        .json({ error: "Invalid encrypted response from GyFTR" });
+    }
+
+    // Decrypt response
+    const decryptedText = decrypt(
+      gyfterResponse.data.data,
+      GYFTR_KEY,
+      GYFTR_IV
+    );
+
+    console.log("Decrypted Response:", decryptedText);
+
+    let parsed;
+    try {
+      parsed = JSON.parse(decryptedText);
+    } catch (e) {
+      console.log("Error parsing decrypted text:", e);
+      return res
+        .status(500)
+        .json({ error: "Failed to parse decrypted GyFTR response" });
+    }
+
+    console.log("Parsed Response:", parsed);
+
+    return res.json({
+      code: parsed.CODE,
+      message: parsed.MESSAGE,
+      data: parsed,
+    });
+  } catch (err) {
+    console.error("Load Wallet Error:", err.message);
+
+    return res.status(500).json({
+      error: "Failed to load wallet",
+      details: err.message,
+    });
+  }
+};
+
+
