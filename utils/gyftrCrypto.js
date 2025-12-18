@@ -17,6 +17,7 @@ function encrypt(text, key, iv) {
 
 // Decrypt base64 string using AES-256-CBC with key and IV
 function decrypt(encryptedText, key, iv) {
+  console.log('encryptedText', encryptedText);
   const KEY = CryptoJS.enc.Utf8.parse(key); 
   const IV = CryptoJS.enc.Utf8.parse(iv);   
   console.log('iv', IV);
@@ -26,6 +27,7 @@ function decrypt(encryptedText, key, iv) {
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7
   });
+  console.log('decrypted', decrypted);
   return decrypted.toString(CryptoJS.enc.Utf8);
 }
 

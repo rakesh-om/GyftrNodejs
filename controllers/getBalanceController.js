@@ -1,33 +1,39 @@
+// /controllers/getBalanceController.js
 const axios = require('axios');
 const { encrypt, decrypt } = require('../utils/gyftrCrypto');
-const {createGiftCard, applyGiftCart } = require('../controllers/giftcard');  
+const { Balance } = require('../models/Balance');
 
-// GyFTR credentials and API info (keep in env variables ideally)
 const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
 const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
-const GYFTR_API_URL = process.env.GYFTR_API_URL || 'https://gyfter.example.com/getWalletBalance';
+const GYFTR_API_URL = process.env.GYFTR_TEST_URL || 'https://gyfter.example.com/getWalletBalance';
 const GYFTR_KEY = process.env.GYFTR_KEY || 'mvPjj93b78BOuupjmETBBY6yrQGhbizC'; // 32-byte
 const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; // 16-byte
+console.log('GYFTR_KEY:', GYFTR_KEY);
+console.log('GYFTR_IV:', GYFTR_IV);
 
-// Controller to get wallet balance
+
 exports.getWalletBalance = async (req, res) => {
-  console.log("🔥 Request Received at /get-balance");
-
   try {
     const { MOBILE, MID, TID, EREFNO } = req.body;
+    const {userid, password} = req.headers;
+    console.log("Userid",userid)
+    console.log("Password",password)
 
-    // Validate required parameters
+    // Validate required parameters 
+
     if (!MOBILE || !MID || !TID) {
       return res.status(400).json({ error: 'MOBILE, MID and TID are required' });
     }
 
-    EREFNO = EREFNO || Date.now().toString();
-
+    // Create payload and encrypt
     const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO });
-    const encryptedPayload = { data: encrypt(payload, GYFTR_KEY, GYFTR_IV) };
+    console.log('Payload:', payload);
+    const encryptedPayload = { data: encrypt(payload , GYFTR_KEY, GYFTR_IV)  };
+  console.log('Encrypted Payload:', encryptedPayload);
+  
 
     // Call GyFTR API
-    const response = await axios.post(GYFTR_API_URL, encryptedPayload, {
+    const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/getWalletBalance", encryptedPayload, {
       headers: {
         'Content-Type': 'application/json',
         'userid':userid,
@@ -35,9 +41,9 @@ exports.getWalletBalance = async (req, res) => {
       }
     });
 
-    console.log("📩 Raw Encrypted Response:", response.data);
-
+    // Decrypt GyFTR response
     const decryptedData = decrypt(response.data.data, GYFTR_KEY, GYFTR_IV);
+    console.log('Decrypted Data:', decryptedData);
     const parsed = JSON.parse(decryptedData);
 
     console.log('Parsed Response:', parsed);
@@ -45,15 +51,9 @@ exports.getWalletBalance = async (req, res) => {
     const balance = parsed.BALANCE;
     console.log('Wallet Balance:', balance);
 
-   await Balance.upsert({ userid: userid, balance: balance });
+   await Balance.upsert({ userId: userid, balance: balance });
 
-    if (parsed.BALANCE !== undefined) {
-      await Balance.upsert({
-        shop: MID,
-        remaining_balance: parseFloat(parsed.BALANCE)
-      });
-    }
-
+    // Send response to frontend
     return res.json({
       code: parsed.CODE,
       message: parsed.MESSAGE,
@@ -61,19 +61,23 @@ exports.getWalletBalance = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Get Wallet Balance Error:', err.message);
+    console.error('Get Wallet Balance Error:', err.message);
     return res.status(500).json({ error: 'Failed to fetch wallet balance' });
   }
 };
 
 
 function validateRequest(body) {
-  const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'OTP', 'SOURCE', 'BILLNO', 'BILLVALUE'];
+  const required = ['MOBILE', 'MID', 'PORDERID', 'AMOUNT', 'SOURCE', 'BILLNO', 'BILLVALUE'];
   const missing = required.filter(k => !body[k] || String(body[k]).trim() === '');
   return { ok: missing.length === 0, missing };
 }
  
-
+// DB duplicate check
+// async function isOrderUnique(PORDERID) {
+//   const exists = await GyftrRedemptions.findOne({ where: { requestid: PORDERID } });
+//   return !exists;
+// }
  
 exports.walletRedemption = async (req, res) => {
   try {
@@ -82,11 +86,14 @@ exports.walletRedemption = async (req, res) => {
     const {userid, password} = req.headers;
 
      const { MOBILE, MID, TID, EREFNO ,PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE} = req.body;
+
+
      
     if (!userid || !password) {
       return res.status(400).json({ message: "Userid/Password missing" });
     }
     
+ 
     const body = req.body;
  
     if (!body.TID) body.TID = `TID${Date.now()}`;
@@ -95,14 +102,21 @@ exports.walletRedemption = async (req, res) => {
     const { ok, missing } = validateRequest(body);
     if (!ok) return res.status(400).json({ message: "Missing required params", missing });
  
+console.log("Validated Body:", body);
+
     const amt = parseFloat(body.AMOUNT);
     if (isNaN(amt)) return res.status(400).json({ message: "Invalid amount" });
     body.AMOUNT = amt.toFixed(2);
-
-    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, OTP, SOURCE, BILLNO, BILLVALUE });
  
+    // const isUnique = await isOrderUnique(body.PORDERID);
+    // if (!isUnique) {
+    //   return res.status(409).json({ message: "Duplicate PORDERID exists. Redemption not allowed." });
+    // }
+ 
+    const payload = JSON.stringify({ MOBILE, MID, TID, EREFNO, PORDERID, AMOUNT, SOURCE, BILLNO, BILLVALUE });
+ console.log("🔐 Payload:", payload);
     const encryptedString = encrypt(payload , GYFTR_KEY, GYFTR_IV);
- 
+ console.log("🔐 Encrypted Payload:", encryptedString);
     const response = await axios.post("https://brandpts.gyftr.net/api/merchant-services/walletRedemption", { data: encryptedString }, {
       headers: {
         "Userid": userid,
@@ -112,6 +126,7 @@ exports.walletRedemption = async (req, res) => {
       // timeout: 20000
     });
 
+    console.log("🔐 Encrypted Response:", response.data);
 
     const respData = response.data;
     if (!respData?.data) {
@@ -126,44 +141,10 @@ exports.walletRedemption = async (req, res) => {
     const code = parsed.CODE;
     const message = parsed.MESSAGE ?? "";
 
-
-    if (code === "00") {
-  const giftAmount = parsed.AMOUNT;
-  const cartId = req.body.cartId;
-
-  if (!cartId) {
-    return res.status(400).json({
-      success: false,
-      message: "cartId is required to apply gift card"
-    });
-  }
-
-  const admin = req.shopifyAdmin;
-
-  const giftCard = await createGiftCard(
-    admin,
-    giftAmount,
-    `GyFTR wallet redemption - ${parsed.TXNID}`
-  );
-
-  // 2️⃣ Apply Gift Card to CART
-  const cart = await applyGiftCart({
-    cartId,
-    giftCardCode: giftCard.code
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: "Wallet redeemed & gift card applied to cart",
-    giftCard: {
-      code: giftCard.code,
-      amount: giftAmount
-    },
-    cart
-  });
-}
-
+    
  
+    
+
  
 return res.status(200).json({
       success: code === "00",
@@ -198,6 +179,8 @@ exports.rechargeWallet = async (req, res) => {
       SOURCE,
     } = req.body;
 
+
+    console.log("Request Body:", req.body);
     const { userid, password } = req.headers;
 
     console.log("Userid:", userid);
@@ -210,6 +193,8 @@ exports.rechargeWallet = async (req, res) => {
       });
     }
 
+
+
     /* ================= BODY VALIDATION ================= */
     if (!MOBILE || !MID || !TID || !PORDERID || !VOUCHERNUMBER || !VOUCHERTYPE || !SOURCE) {
       return res.status(400).json({
@@ -218,12 +203,16 @@ exports.rechargeWallet = async (req, res) => {
       });
     }
 
+ 
+
     // OTP mandatory only for P / E voucher types
-    if ((VOUCHERTYPE === "P" || VOUCHERTYPE === "E") && !OTP) {
-      return res.status(400).json({
-        error: "OTP is required for voucher type P or E",
-      });
-    }
+    // if ((VOUCHERTYPE === "P" || VOUCHERTYPE === "E") && !OTP) {
+    //   return res.status(400).json({
+    //     error: "OTP is required for voucher type P or E",
+    //   });
+    // }
+
+console.log("All required fields are present.");
 
     /* ================= PAYLOAD ================= */
     const payload = {
@@ -237,11 +226,15 @@ exports.rechargeWallet = async (req, res) => {
     };
     
 
+
+
     if (EREFNO) payload.EREFNO = EREFNO;
-    if (OTP) payload.OTP = OTP;
+    // if (OTP) payload.OTP = OTP;
 
     console.log("Plain Payload:", payload);
 
+
+    console.log("Plain Payload:", payload);
     /* ================= ENCRYPT ================= */
     const encryptedPayload = {
       data: encrypt(JSON.stringify(payload), GYFTR_KEY, GYFTR_IV),

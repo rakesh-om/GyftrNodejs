@@ -109,7 +109,6 @@
         console.log('Initiating payment for:', shop);
         
       try {
-
         // Query Setting table for merchant details
         const [merchant] = await db.query(
           'SELECT brand_name,mid,shopid,hash_salt FROM Setting WHERE shopid = :shopId LIMIT 1',
@@ -123,7 +122,6 @@
           apiName: 'initiatePayment',
           logMsg: 'Merchant fetch query result',
           request: {
-          
             params: { shopId }
           },
           response: merchant
