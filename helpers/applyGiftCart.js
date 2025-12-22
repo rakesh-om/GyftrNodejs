@@ -1,32 +1,15 @@
 const axios = require("axios");
+const ShopifySession = require("../models/ShopifySession"); // Import your model
+
 
 exports.applyGiftCardToCart = async (shop, adminToken, cartId, giftCardCode) => {
 
-  // 1️ Create Storefront Token
-  const tokenRes = await axios.post(
-    `https://${shop}/admin/api/2025-10/graphql.json`,
-    {
-      query: `
-        mutation StorefrontAccessTokenCreate($input: StorefrontAccessTokenInput!) {
-          storefrontAccessTokenCreate(input: $input) {
-            storefrontAccessToken { accessToken }
-            userErrors { message }
-          }
-        }
-      `,
-      variables: { input: { title: "Gyftr Token" } },
-    },
-    {
-      headers: {
-        "X-Shopify-Access-Token": adminToken,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const session = await ShopifySession.findOne({ where: { shop } });
+  if (!session || !session.storefront_access_token) {
+    throw new Error("Storefront access token not found for this shop");
+  }
+  const storefrontToken = session.storefront_access_token;
 
-  const storefrontToken =
-    tokenRes.data.data.storefrontAccessTokenCreate.storefrontAccessToken
-      .accessToken;
 
   // 2️ Apply Gift Card
   const cartRes = await axios.post(

@@ -23,8 +23,8 @@
     approveBtn.addEventListener("click", () => {
       const data = {
         mid: "GYTORGSHPLG.WTPG.5625",
-        accessToken: "shpua_6a4a11ef35fc9fab7321a2b2813c9312",
-        shop: "test-store.myshopify.com",
+        accessToken: "",
+        shop: "testdev-store99.myshopify.com",
         brand_name: "Gyfter",
         hash_salt: "hashSalt",
         password: "pass123",
@@ -35,8 +35,8 @@
       };
 
       // Encrypt the data
-      const key = "7TloC0pRacfxOA2rlXURmFLYCLl7wdPj"; // 32 bytes
-      const iv = "5819061549973285"; // 16 bytes
+      const key = ""; // 32 bytes
+      const iv = ""; // 16 bytes
       const jsonString = JSON.stringify(data);
 
       // Use CryptoJS AES-256-CBC
@@ -47,7 +47,7 @@
       }).toString();
 
       // Redirect to your app with encrypted payload
-          window.location.href = `https://admin.shopify.com/store/test-store-samir11/apps/pay-by-gyfter-1/app?encryptedData=${encodeURIComponent(encrypted)}`;
+          window.location.href = `https://admin.shopify.com/store/testdev-store99/apps/pay-by-gyfter-2/app?encryptedData=${encodeURIComponent(encrypted)}`;
 
     });
   </script>

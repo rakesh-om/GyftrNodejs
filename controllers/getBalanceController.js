@@ -103,12 +103,6 @@ exports.getWalletBalance = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
 exports.walletRedemption = async (req, res) => {
   try {
     const { MOBILE, AMOUNT, SHOP, SHOPID, CARTID } = req.body;
