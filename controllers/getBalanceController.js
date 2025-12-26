@@ -9,14 +9,6 @@ const {createGiftCard} = require("../helpers/createGiftCard");
 const {applyGiftCardToCart} = require("../helpers/applyGiftCart");
 
 
-const GYFTR_USERID = process.env.GYFTR_USERID || 'your_userid';
-const GYFTR_PASSWORD = process.env.GYFTR_PASSWORD || 'your_password';
-const GYFTR_API_URL = process.env.GYFTR_TEST_URL || 'https://gyfter.example.com/getWalletBalance';
-const GYFTR_KEY = process.env.GYFTR_KEY || 'mvPjj93b78BOuupjmETBBY6yrQGhbizC'; // 32-byte
-const GYFTR_IV = process.env.GYFTR_IV || '9660064408704604'; // 16-byte
-console.log('GYFTR_KEY:', GYFTR_KEY);
-console.log('GYFTR_IV:', GYFTR_IV);
-
 
 exports.getWalletBalance = async (req, res) => {
   try {
@@ -57,6 +49,7 @@ exports.getWalletBalance = async (req, res) => {
     const password = setting.password;
     const GYFTR_KEY = setting.enc_dec_api_key;
     const GYFTR_IV = setting.enc_dec_api_iv_key;
+    console.log("Gyfter Credentials:", { userid, password, GYFTR_KEY, GYFTR_IV });
 
     console.log("Using MID:", MID);
     console.log("Using TID:", TID);
@@ -170,7 +163,6 @@ exports.walletRedemption = async (req, res) => {
 
     console.log("Calling Gyftr Wallet with body:", gyftrBody);
 
-    // 🔥 1️⃣ Call Gyftr Wallet
     const parsed = await callGyftrWallet(gyftrCreds, gyftrBody);
     
     console.log("Gyftr Response:", parsed);

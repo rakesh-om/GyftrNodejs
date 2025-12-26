@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 exports.createGiftCard = async (shop, adminToken, amount, code) => {
+  console.log("Admin Token:", adminToken);
   const query = `
     mutation giftCardCreate($input: GiftCardCreateInput!) {
       giftCardCreate(input: $input) {
@@ -31,6 +32,7 @@ exports.createGiftCard = async (shop, adminToken, amount, code) => {
       },
     }
   );
+console.log("Gift Card Creation Response:", res.data);
 
   const result = res.data.data.giftCardCreate;
 
@@ -38,5 +40,6 @@ exports.createGiftCard = async (shop, adminToken, amount, code) => {
     throw new Error(result.userErrors[0].message);
   }
 
+  console.log("Created Gift Card:", result);
   return result.giftCard;
 };

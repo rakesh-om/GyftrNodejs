@@ -4,7 +4,7 @@ const db = require('../config/dbConnect');
 const Balance = db.define('Balance', {
   userId: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     unique: true
   },
   balance: {
